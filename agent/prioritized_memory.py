@@ -1,6 +1,6 @@
 import random
 import numpy as np
-from agent.SumTree import SumTree
+from agent.sumtree import SumTree
 
 #prioritized_memory by https://github.com/rlcode/per/blob/master/prioritized_memory.py
 

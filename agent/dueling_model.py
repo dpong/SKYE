@@ -4,7 +4,7 @@ from tensorflow.keras.layers import Input, Dense, Add, Subtract, Lambda, LSTM
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 import tensorflow.keras.backend as K
-from agent.Noisynet import NoisyDense
+from agent.noisynet import NoisyDense
 
 #Tensorflow 2.0 Beta
 
@@ -30,7 +30,7 @@ class Dueling_model():
         q = Add()([value, advantage])
 
         # noisy
-        noise = NoisyDense(action_size, True, training)
+        noise = NoisyDense(action_size, training, bias=True)
         final = noise(q)
 
         #最後compile

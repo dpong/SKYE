@@ -4,7 +4,7 @@ import tensorflow as tf
 
 # Noisy Network 
 class NoisyDense(tf.keras.layers.Layer):
-    def __init__(self, units, bias, training):
+    def __init__(self, units, training, bias=True):
         super(NoisyDense, self).__init__()
         #是訓練階段給高斯雜訊，不是就把epsilon設0
         if training:
