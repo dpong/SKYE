@@ -1,0 +1,3 @@
+# SKYE
+
+SKYE Trading AI
