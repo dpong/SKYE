@@ -15,14 +15,14 @@ class Dueling_model():
         lstm1 = LSTM(neurons, activation='sigmoid',return_sequences=False)(state_input)
 
         #連結層
-        d1 = Dense(neurons,activation='relu')(lstm1)
-        d1_plus1 = Dense(neurons,activation='relu')(d1)
-        d1_plus2 = Dense(neurons,activation='relu')(d1_plus1)
-        d2 = Dense(neurons,activation='relu')(d1_plus2)
+        d1 = Dense(neurons,activation='elu')(lstm1)
+        d1_plus1 = Dense(neurons,activation='elu')(d1)
+        d1_plus2 = Dense(neurons,activation='elu')(d1_plus1)
+        d2 = Dense(neurons,activation='elu')(d1_plus2)
         
         #dueling
-        d3_a = Dense(neurons/2, activation='relu')(d2)
-        d3_v = Dense(neurons/2, activation='relu')(d2)
+        d3_a = Dense(neurons/2, activation='elu')(d2)
+        d3_v = Dense(neurons/2, activation='elu')(d2)
         a = Dense(action_size,activation='linear')(d3_a)
         value = Dense(1,activation='linear')(d3_v)
         a_mean = Lambda(lambda x: K.mean(x, axis=1, keepdims=True))(a)
@@ -35,7 +35,7 @@ class Dueling_model():
 
         #最後compile
         model = Model(inputs=state_input, outputs=final)
-        model.compile(loss='mse', optimizer=Adam(lr=0.001))
+        model.compile(loss='mse', optimizer=Adam(lr=0.0001))
         
         return model
     

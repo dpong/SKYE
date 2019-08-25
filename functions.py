@@ -26,8 +26,13 @@ def get_shape(data,window_size):
 	neurons = input_shape.shape[1] * input_shape.shape[2] * 2 / 3
 	return input_shape.shape[1:], math.ceil(neurons)
 
+#取得歷史資料
+def get_data(ticker, start, end):
+	df = pdr.DataReader('{}'.format(ticker),'yahoo', start=start, end=end)
+	return df
+
 #計算unit要訂多少
-def get_unit(avg_price,init_cash):
+def get_unit(avg_price, init_cash):
 	unit = init_cash / avg_price
 	unit = int(unit/10)
 	if unit < 1:
@@ -36,7 +41,7 @@ def get_unit(avg_price,init_cash):
 		return unit
 
 #初始化輸入資料
-def init_data(df,init_cash):
+def init_data(df, init_cash):
 	df['shift_close'] = df['Close'].shift(1)   #交易的時候，只知道昨天的收盤價
 	df.dropna(how='any',inplace=True)
 	df['Cash'] = init_cash

@@ -13,7 +13,6 @@ class Agent:
 		self.memory_size = 1000 #記憶長度
 		self.memory = Memory(self.memory_size)
 		self.gamma = 0.95
-		self.learning_rate = 0.1
 		self.batch_size = 32
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
@@ -94,8 +93,7 @@ class Agent:
 		#更新Q值: Double DQN的概念
 		result[0,action] = reward
 		if not done:
-			op = reward + self.gamma * t_next_result[0,next_action] - old_result
-			result[0,action] += op * self.learning_rate
+			result[0,action] += self.gamma * t_next_result[0,next_action]
 		#計算error給PER
 		error = abs(old_result - result[0,action])
 		return result, error
