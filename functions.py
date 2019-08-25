@@ -36,31 +36,37 @@ def get_unit(avg_price,init_cash):
 		return unit
 
 #初始化輸入資料
-def init_data(df):
+def init_data(df,init_cash):
 	df['shift_close'] = df['Close'].shift(1)   #交易的時候，只知道昨天的收盤價
 	df.dropna(how='any',inplace=True)
-	data = df[['shift_close','Open','High','Low','Volume']].values
+	df['Cash'] = init_cash
+	df['Holding'] = 0
+	data = df[['shift_close','Open','High','Low','Volume','Cash','Holding']].values
 	return data
 
 def get_long_account(inventory,close_price,commission):
-	sum = 0
+	sum = [0,0]
 	for order in inventory:
-		sum += order[0]
-	avg_price = sum / len(inventory)
+		sum[0] += order[0]
+		sum[1] += order[1]
+	avg_close = sum[0] / len(inventory)
+	avg_price = sum[1] / len(inventory)
 	account_profit = close_price*(1-commission) - avg_price
-	return account_profit, avg_price
+	return account_profit, avg_price, avg_close
 
 def get_short_account(inventory,close_price,commission):
-	sum = 0
+	sum = [0,0]
 	for order in inventory:
-		sum += order[0]
-	avg_price = sum / len(inventory)
+		sum[0] += order[0]
+		sum[1] += order[1]
+	avg_close = sum[0] / len(inventory)
+	avg_price = sum[1] / len(inventory)
 	account_profit = avg_price - close_price*(1+commission)
-	return account_profit, avg_price
+	return account_profit, avg_price , avg_close
 
-def get_inventory_value(inventory,close_price,commission):
-	if inventory[0][1] == 'long':
-		return close_price*(1-commission)*len(inventory)
+def get_inventory_value(inventory, unit, close_price, commission):
+	if inventory[0][-1] == 'long':
+		return close_price * (1-commission) * len(inventory) * unit
 	else:
-		account_profit, avg_price = get_short_account(inventory,close_price,commission)
-		return (avg_price + account_profit)*len(inventory)
+		account_profit, avg_price, avg_close = get_short_account(inventory,close_price,commission)
+		return (avg_price + account_profit) * len(inventory) * unit

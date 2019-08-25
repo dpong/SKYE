@@ -12,8 +12,7 @@ class Profolio():
 
     def total_value(self, unit, close, cash, inventory, commission):
         if len(inventory) > 0:
-            inventory_value = get_inventory_value(inventory, close, commission)
-            inventory_value *= unit
+            inventory_value = get_inventory_value(inventory, unit, close, commission)
             self.profolio_value = inventory_value + cash
         else:
             self.profolio_value = cash
