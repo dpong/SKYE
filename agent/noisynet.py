@@ -2,9 +2,9 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import tensorflow as tf
 
 
-# Noisy Network 
+# Noisy Network with C51
 class NoisyDense(tf.keras.layers.Layer):
-    def __init__(self, units, training=True, bias=True):
+    def __init__(self, action_size, training=True, bias=True):
         super(NoisyDense, self).__init__()
         #是訓練階段給高斯雜訊，不是就把epsilon設0
         if training:
@@ -25,18 +25,18 @@ class NoisyDense(tf.keras.layers.Layer):
             sigma_bias_init = tf.zeros_initializer()
         
         # mu + sigma * epsilon for weight
-        self.epsilon_w = tf.Variable(initial_value=epsilon(shape=(units,units),
+        self.epsilon_w = tf.Variable(initial_value=epsilon(shape=(action_size,51),
         dtype='float32'),trainable=False)
-        self.mu_w = tf.Variable(initial_value=mu_init(shape=(units,units),
+        self.mu_w = tf.Variable(initial_value=mu_init(shape=(action_size,51),
         dtype='float32'),trainable=True)
-        self.sigma_w = tf.Variable(initial_value=sigma_init(shape=(units,units),
+        self.sigma_w = tf.Variable(initial_value=sigma_init(shape=(action_size,51),
         dtype='float32'),trainable=True)
         # mu + sigma * epsilon for bias
-        self.epsilon_bias = tf.Variable(initial_value=epsilon(shape=(units,),
+        self.epsilon_bias = tf.Variable(initial_value=epsilon(shape=(51,),
         dtype='float32'),trainable=False)
-        self.mu_bias = tf.Variable(initial_value=mu_bias_init(shape=(units,),
+        self.mu_bias = tf.Variable(initial_value=mu_bias_init(shape=(51,),
         dtype='float32'),trainable=True)
-        self.sigma_bias = tf.Variable(initial_value=sigma_bias_init(shape=(units,),
+        self.sigma_bias = tf.Variable(initial_value=sigma_bias_init(shape=(51,),
         dtype='float32'),trainable=True)
         
     def call(self, inputs):

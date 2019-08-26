@@ -8,7 +8,7 @@ from agent.noisynet import NoisyDense
 
 #Tensorflow 2.0 Beta
 
-class Dueling_model():
+class Build_model():
     def build_model(self, state_size, neurons, action_size, training):
         #前面的LSTM層
         state_input = Input(shape=state_size)
@@ -29,12 +29,13 @@ class Dueling_model():
         advantage = Subtract()([a, a_mean])
         q = Add()([value, advantage])
 
-        # noisy
-        noise = NoisyDense(action_size, training, bias=True)
-        final = noise(q)
+        # noisy & distributional
+        distribution_list = []
+        for i in range(action_size):
+            distribution_list.append(NoisyDense(action_size,training, bias=True)(q))
 
         #最後compile
-        model = Model(inputs=state_input, outputs=final)
+        model = Model(inputs=state_input, outputs=distribution_list)
         model.compile(loss='mse', optimizer=Adam(lr=0.0001))
         
         return model

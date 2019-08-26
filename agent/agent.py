@@ -3,7 +3,7 @@ import tensorflow as tf
 import os, random
 import numpy as np
 from agent.prioritized_memory import Memory
-from agent.dueling_model import Dueling_model
+from agent.model import Build_model
 
 class Agent:
 	def __init__(self, ticker, state_size, neurons, m_path, is_eval=False):
@@ -14,6 +14,13 @@ class Agent:
 		self.memory = Memory(self.memory_size)
 		self.gamma = 0.95
 		self.batch_size = 32
+
+		self.num_atoms = 51 # for C51
+		self.v_max = 30 # Max possible score for Defend the center is 26 - 0.1*26 = 23.4
+		self.v_min = -10 # -0.1*26 - 1 = -3.6
+		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
+		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
+
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
 		self.checkpoint_dir = os.path.dirname(self.checkpoint_path)
@@ -29,7 +36,7 @@ class Agent:
 		
 		
 	def _model(self, model_name, training):
-		ddqn = Dueling_model()
+		ddqn = Build_model()
 		model = ddqn.build_model(self.state_size, self.neurons, self.action_size, training)
 		if os.path.exists(self.check_index):
 			#如果已經有訓練過，就接著load權重
@@ -53,8 +60,14 @@ class Agent:
 
 	def act(self, state):
 		# 有NoisyNet在決定探索能力
-		options = self.model.predict(state)
-		return np.argmax(options[0]) # array裡面最大值的位置號
+		z = self.model.predict(state) # Return a list [1x51...]
+		z_concat = np.vstack(z)
+		q = np.sum(np.multiply(z_concat, np.array(self.z)), axis=1) 
+
+        # Pick action with the biggest Q value
+		action_idx = np.argmax(q)
+		print(action_idx)
+		return action_idx
 
 	# Prioritized experience replay
 	# save sample (error,<s,a,r,s'>) to the replay memory
@@ -80,7 +93,31 @@ class Agent:
 			#train model
 			self.model.fit(mini_batch[i][0], target, epochs = 1,
 			 verbose=0, callbacks = [self.cp_callback])
+	
+	def get_target_n_error_51(self, state, action, reward, next_state, done):
+		z = self.model.predict(next_state)
+		z_ = self.target_model.predict(next_state)
+		z_concat = np.vstack(z)
+		q = np.sum(np.multiply(z_concat, np.array(self.z)), axis=1) 
+		optimal_action_idxs = np.argmax(q)
+		m_prob = [np.zeros((1, self.num_atoms)) for i in range(self.action_size)]
+		
+		if done:
+            # Distribution collapses to a single point
+            Tz = min(self.v_max, max(self.v_min, reward))
+            bj = (Tz - self.v_min) / self.delta_z 
+            m_l, m_u = math.floor(bj), math.ceil(bj)
+            m_prob[action][0][int(m_l)] += (m_u - bj)
+            m_prob[action][0][int(m_u)] += (bj - m_l)
+        else:
+			for j in range(self.num_atoms):
+				Tz = min(self.v_max, max(self.v_min, reward + self.gamma * self.z[j]))
+				bj = (Tz - self.v_min) / self.delta_z 
+				m_l, m_u = math.floor(bj), math.ceil(bj)
+				m_prob[action][0][int(m_l)] += z_[optimal_action_idxs][0][j] * (m_u - bj)
+				m_prob[action][0][int(m_u)] += z_[optimal_action_idxs][0][j] * (bj - m_l)
 
+	
 	# 更新Q和error
 	def get_target_n_error(self, state, action, reward, next_state, done):
 		#主model動作
