@@ -39,7 +39,6 @@ class Profolio():
             sharp = 0
         else:
             sharp = (return_ratio - interest) / std 
-        sharp = sharp / math.sqrt(len(data)) * math.sqrt(252)  #年化
         return round(sharp,2)
 
     
