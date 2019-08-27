@@ -38,7 +38,7 @@ class Agent:
 		
 	def _model(self, model_name, training):
 		ddqn = Build_model()
-		model = ddqn.build_model(self.state_size, self.neurons, self.action_size, training)
+		model = ddqn.build_model(self.state_size, self.neurons, self.action_size, self.num_atoms, training)
 		if os.path.exists(self.check_index):
 			#如果已經有訓練過，就接著load權重
 			print('-'*52+'{} Weights loaded!!'.format(model_name)+'-'*52)

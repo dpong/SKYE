@@ -4,10 +4,11 @@ import numpy as np
 
 # Noisy Network with C51
 class NoisyDense(tf.keras.layers.Layer):
-    def __init__(self, action_size, training=True, bias=True):
+    def __init__(self, units, inputs_dim, training=True, bias=True):
         super(NoisyDense, self).__init__()
         self.training = training
-        self.action_size = action_size
+        self.inputs_dim = inputs_dim
+        self.units = units
         
         # mu亂數，sigma常數0.1 (我要當rainbow)
         mu_init = tf.random_uniform_initializer(minval=-1, maxval=1)
@@ -22,19 +23,19 @@ class NoisyDense(tf.keras.layers.Layer):
             sigma_bias_init = tf.zeros_initializer()
         
         # mu + sigma * epsilon for weight
-        self.mu_w = tf.Variable(initial_value=mu_init(shape=(self.action_size,51),
+        self.mu_w = tf.Variable(initial_value=mu_init(shape=(self.inputs_dim, self.units),
         dtype='float32'),trainable=True)
-        self.sigma_w = tf.Variable(initial_value=sigma_init(shape=(self.action_size,51),
+        self.sigma_w = tf.Variable(initial_value=sigma_init(shape=(self.inputs_dim, self.units),
         dtype='float32'),trainable=True)
         # mu + sigma * epsilon for bias
-        self.mu_bias = tf.Variable(initial_value=mu_bias_init(shape=(51,),
+        self.mu_bias = tf.Variable(initial_value=mu_bias_init(shape=(self.units,),
         dtype='float32'),trainable=True)
-        self.sigma_bias = tf.Variable(initial_value=sigma_bias_init(shape=(51,),
+        self.sigma_bias = tf.Variable(initial_value=sigma_bias_init(shape=(self.units,),
         dtype='float32'),trainable=True)
         
     def call(self, inputs):
         if self.training:
-            p = tf.random.normal([self.action_size, 51])
+            p = tf.random.normal([self.inputs_dim, self.units])
             q = tf.random.normal([51,])
             f_p = tf.multiply(tf.sign(p), tf.pow(tf.abs(p), 0.5))
             f_q = tf.multiply(tf.sign(q), tf.pow(tf.abs(q), 0.5))
