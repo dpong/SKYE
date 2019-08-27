@@ -17,8 +17,8 @@ class Agent:
 		self.batch_size = 32
 
 		self.num_atoms = 51 # for C51
-		self.v_max = 30 # Max possible score for Defend the center is 26 - 0.1*26 = 23.4
-		self.v_min = -10 # -0.1*26 - 1 = -3.6
+		self.v_max = 10 
+		self.v_min = -10 
 		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
 		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
 
@@ -31,7 +31,7 @@ class Agent:
 			self.model = self._model('  Model', training=True)
 			self.target_model = self._model(' Target', training=True)
 		else:
-			self.model = self._model('  Model', training=True)
+			self.model = self._model('  Model', training=False)
 		
 		self.cp_callback = self._check_point()
 		
@@ -97,12 +97,8 @@ class Agent:
 	
 	def get_target_n_error_51(self, state, action, reward, next_state, done):
 		log_p = self.model.predict(state)
-		log_p = log_softmax(log_p)
-		m = tf.zeros([1, self.num_atoms])
-		loss = tf.reduce_sum(m * log_p, 1)
-		loss = tf.negative(loss) #* is_weights)
-		error = tf.abs(loss)
-		error = tf.reduce_mean(error)
+		log_p = log_softmax(log_p[action])
+
 		z = self.model.predict(next_state)
 		z_ = self.target_model.predict(next_state)
 		z_concat = np.vstack(z)
@@ -123,7 +119,11 @@ class Agent:
 				m_l, m_u = math.floor(bj), math.ceil(bj)
 				m_prob[action][0][int(m_l)] += z_[optimal_action_idxs][0][j] * (m_u - bj)
 				m_prob[action][0][int(m_u)] += z_[optimal_action_idxs][0][j] * (bj - m_l)
+		
+		error = abs(tf.reduce_sum(m_prob[action] * log_p))
+		
 		return m_prob, error
+
 	'''
 	# 更新Q和error
 	def get_target_n_error(self, state, action, reward, next_state, done):

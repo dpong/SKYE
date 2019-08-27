@@ -30,6 +30,8 @@ data = init_data(df, init_cash)
 #給agent初始化輸入的緯度
 input_shape, neurons = get_shape(data[:window_size+1], window_size)
 agent = Agent(ticker, input_shape, neurons, c_path, is_eval=False)
+# n-step return
+step_n = 3
 
 l = len(data) -1
 n_close = 0
@@ -43,9 +45,9 @@ for e in range(1, episode_count + 1):
 	profolio.max_drawdown = 0
 	data[:,n_cash] = init_cash
 	data[:,n_holding] = 0
-	for t in range(window_size+1, l):         #前面的資料要來預熱一下
+	for t in range(window_size + step_n, l):         #前面的資料要來預熱一下
 		state = getState(data, t, window_size)
-		next_state = getState(data, t + 1, window_size)
+		next_state = getState(data, t + step_n, window_size) 
 
 		action = agent.act(state)
 

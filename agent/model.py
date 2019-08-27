@@ -32,7 +32,7 @@ class Build_model():
         # noisy & distributional
         distribution_list = []
         for i in range(action_size):
-            distribution_list.append(NoisyDense(action_size,training, bias=True)(q))
+            distribution_list.append(NoisyDense(action_size, training, bias=True)(q))
 
         #最後compile
         model = Model(inputs=state_input, outputs=distribution_list)
