@@ -23,8 +23,8 @@ class Build_model():
         #dueling
         d3_a = Dense(neurons/2, activation='elu')(d2)
         d3_v = Dense(neurons/2, activation='elu')(d2)
-        a = Dense(action_size,activation='linear')(d3_a)
-        value = Dense(1,activation='linear')(d3_v)
+        a = Dense(action_size,activation='elu')(d3_a)
+        value = Dense(1,activation='elu')(d3_v)
         a_mean = Lambda(lambda x: K.mean(x, axis=1, keepdims=True))(a)
         advantage = Subtract()([a, a_mean])
         q = Add()([value, advantage])

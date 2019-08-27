@@ -1,9 +1,10 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import tensorflow as tf
-import os, random
+import os, random, math
 import numpy as np
 from agent.prioritized_memory import Memory
 from agent.model import Build_model
+from tensorflow.nn import softmax, log_softmax
 
 class Agent:
 	def __init__(self, ticker, state_size, neurons, m_path, is_eval=False):
@@ -61,18 +62,18 @@ class Agent:
 	def act(self, state):
 		# 有NoisyNet在決定探索能力
 		z = self.model.predict(state) # Return a list [1x51...]
+		z = softmax(z)
 		z_concat = np.vstack(z)
 		q = np.sum(np.multiply(z_concat, np.array(self.z)), axis=1) 
 
         # Pick action with the biggest Q value
 		action_idx = np.argmax(q)
-		print(action_idx)
 		return action_idx
 
 	# Prioritized experience replay
 	# save sample (error,<s,a,r,s'>) to the replay memory
 	def append_sample(self, state, action, reward, next_state, done):
-		target, error = self.get_target_n_error(state, action, reward, next_state, done)
+		target, error = self.get_target_n_error_51(state, action, reward, next_state, done)
 		self.memory.add(error,(state, action, reward, next_state, done))
 
 	def train_model(self):
@@ -80,7 +81,7 @@ class Agent:
 		mini_batch, idxs, is_weights = self.memory.sample(self.batch_size)
 
 		for i in range(self.batch_size):
-			target, error = self.get_target_n_error(
+			target, error = self.get_target_n_error_51(
 				mini_batch[i][0], #state
 				mini_batch[i][1], #action
 				mini_batch[i][2], #reward
@@ -95,6 +96,13 @@ class Agent:
 			 verbose=0, callbacks = [self.cp_callback])
 	
 	def get_target_n_error_51(self, state, action, reward, next_state, done):
+		log_p = self.model.predict(state)
+		log_p = log_softmax(log_p)
+		m = tf.zeros([1, self.num_atoms])
+		loss = tf.reduce_sum(m * log_p, 1)
+		loss = tf.negative(loss) #* is_weights)
+		error = tf.abs(loss)
+		error = tf.reduce_mean(error)
 		z = self.model.predict(next_state)
 		z_ = self.target_model.predict(next_state)
 		z_concat = np.vstack(z)
@@ -102,22 +110,21 @@ class Agent:
 		optimal_action_idxs = np.argmax(q)
 		m_prob = [np.zeros((1, self.num_atoms)) for i in range(self.action_size)]
 		
-		if done:
-            # Distribution collapses to a single point
-            Tz = min(self.v_max, max(self.v_min, reward))
-            bj = (Tz - self.v_min) / self.delta_z 
-            m_l, m_u = math.floor(bj), math.ceil(bj)
-            m_prob[action][0][int(m_l)] += (m_u - bj)
-            m_prob[action][0][int(m_u)] += (bj - m_l)
-        else:
+		if done: # Distribution collapses to a single point
+			Tz = min(self.v_max, max(self.v_min, reward))
+			bj = (Tz - self.v_min) / self.delta_z 
+			m_l, m_u = math.floor(bj), math.ceil(bj)
+			m_prob[action][0][int(m_l)] += (m_u - bj)
+			m_prob[action][0][int(m_u)] += (bj - m_l)
+		else:
 			for j in range(self.num_atoms):
 				Tz = min(self.v_max, max(self.v_min, reward + self.gamma * self.z[j]))
-				bj = (Tz - self.v_min) / self.delta_z 
+				bj = (Tz - self.v_min) / self.delta_z
 				m_l, m_u = math.floor(bj), math.ceil(bj)
 				m_prob[action][0][int(m_l)] += z_[optimal_action_idxs][0][j] * (m_u - bj)
 				m_prob[action][0][int(m_u)] += z_[optimal_action_idxs][0][j] * (bj - m_l)
-
-	
+		return m_prob, error
+	'''
 	# 更新Q和error
 	def get_target_n_error(self, state, action, reward, next_state, done):
 		#主model動作
@@ -134,7 +141,7 @@ class Agent:
 		#計算error給PER
 		error = abs(old_result - result[0,action])
 		return result, error
-
+	'''
 
 
 	

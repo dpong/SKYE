@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import tensorflow as tf
 
-
 # Noisy Network with C51
 class NoisyDense(tf.keras.layers.Layer):
     def __init__(self, action_size, training=True, bias=True):
