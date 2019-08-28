@@ -6,6 +6,11 @@ from agent.prioritized_memory import Memory
 from agent.model import Build_model
 from tensorflow.nn import softmax, log_softmax
 
+config = tf.compat.v1.ConfigProto()
+config.intra_op_parallelism_threads = 8
+config.inter_op_parallelism_threads = 8
+tf.compat.v1.Session(config=config)
+
 class Agent:
 	def __init__(self, ticker, state_size, neurons, m_path, is_eval=False):
 		self.state_size = state_size # normalized previous days

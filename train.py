@@ -17,7 +17,7 @@ c_path = "models/{}/training.ckpt".format(ticker)
 m_path = "models/{}/model.h5".format(ticker)
 #取得歷史資料
 start = '2018-1-1'
-end = '2019-1-1'
+end = '2018-4-1'
 df = get_data(ticker, start, end)
 #df_ben = get_data('SPY', start, end)
 #起始各個class
@@ -27,13 +27,14 @@ trading.init_cash = init_cash
 profolio = Profolio(init_cash)
 #資料整合轉換
 data = init_data(df, init_cash)
-#給agent初始化輸入的緯度
-input_shape, neurons = get_shape(data[:window_size+1], window_size)
-agent = Agent(ticker, input_shape, neurons, c_path, is_eval=False)
 # n-step return
 step_n = 3
+#給agent初始化輸入的緯度
+input_shape, neurons = get_shape(data[:window_size], window_size)
+agent = Agent(ticker, input_shape, neurons, c_path, is_eval=False)
 
-l = len(data) -1
+
+l = len(data) - step_n
 n_close = 0
 n_cash = -2  #cash資料放data的倒數第二個
 n_holding = -1  #holding資料放data的倒數第一個
@@ -45,7 +46,7 @@ for e in range(1, episode_count + 1):
 	profolio.max_drawdown = 0
 	data[:,n_cash] = init_cash
 	data[:,n_holding] = 0
-	for t in range(window_size + step_n, l):         #前面的資料要來預熱一下
+	for t in range(window_size, l):         #前面的資料要來預熱一下
 		state = getState(data, t, window_size)
 		next_state = getState(data, t + step_n, window_size) 
 
