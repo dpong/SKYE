@@ -1,5 +1,4 @@
 from functions import *
-from trading import Trading
 import numpy as np
 import math
 
@@ -9,15 +8,15 @@ class Profolio():
         self.init_cash = init_cash
         self.profolio_value = init_cash
 
-    def total_value(self, unit, close, cash, inventory, commission):
+    def total_value(self, close, cash, inventory, commission):
         if len(inventory) > 0:
-            inventory_value = get_inventory_value(inventory, unit, close, commission)
+            inventory_value = get_inventory_value(inventory, close, commission)
             self.profolio_value = inventory_value + cash
         else:
             self.profolio_value = cash
 
-    def eval_draw_down(self, unit, close, cash, inventory, commission):
-        self.total_value(unit, close, cash, inventory,commission)
+    def eval_draw_down(self, close, cash, inventory, commission):
+        self.total_value(close, cash, inventory,commission)
         if self.profolio_value - self.init_cash < 0:  #虧損時才做
             drawdown = (self.profolio_value - self.init_cash) / self.init_cash
             if drawdown < self.max_drawdown:

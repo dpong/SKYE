@@ -32,8 +32,8 @@ def get_data(ticker, start, end):
 	return df
 
 #計算unit要訂多少
-def get_unit(avg_price, init_cash):
-	unit = init_cash / avg_price
+def get_unit(price, profolio):
+	unit = profolio / price
 	unit = int(unit/10)
 	if unit < 1:
 		print('Need more cash for this target!!')
@@ -50,28 +50,36 @@ def init_data(df, init_cash):
 	return data
 
 def get_long_account(inventory,close_price,commission):
-	sum = [0,0]
+	value_sum = [0,0,0]
 	for order in inventory:
-		sum[0] += order[0]
-		sum[1] += order[1]
-	avg_close = sum[0] / len(inventory)
-	avg_price = sum[1] / len(inventory)
-	account_profit = close_price*(1-commission) - avg_price
-	return account_profit, avg_price, avg_close
+		value_sum[0] += order[0] * order[2]  #close
+		value_sum[1] += order[1] * order[2]  #price
+		value_sum[2] += close_price*(1-commission) * order[2]
+	account_profit = value_sum[2] - value_sum[1]
+	return account_profit, value_sum[1], value_sum[0]
 
 def get_short_account(inventory,close_price,commission):
-	sum = [0,0]
+	value_sum = [0,0,0]
 	for order in inventory:
-		sum[0] += order[0]
-		sum[1] += order[1]
-	avg_close = sum[0] / len(inventory)
-	avg_price = sum[1] / len(inventory)
-	account_profit = avg_price - close_price*(1+commission)
-	return account_profit, avg_price , avg_close
+		value_sum[0] += order[0] * order[2]
+		value_sum[1] += order[1] * order[2]
+		value_sum[2] += close_price*(1+commission) * order[2]
+	account_profit = value_sum[1] - value_sum[2]
+	return account_profit, value_sum[1], value_sum[0]
 
-def get_inventory_value(inventory, unit, close_price, commission):
+def get_inventory_value(inventory, close_price, commission):
 	if inventory[0][-1] == 'long':
-		return close_price * (1-commission) * len(inventory) * unit
+		value_sum = 0
+		for order in inventory:
+			value_sum += close_price * (1-commission) * order[2]
+		return value_sum
+
 	else:
-		account_profit, avg_price, avg_close = get_short_account(inventory,close_price,commission)
-		return (avg_price + account_profit) * len(inventory) * unit
+		account_profit, price_value, close_value = get_short_account(inventory,close_price,commission)
+		return price_value + account_profit
+
+def get_inventory_units(inventory):
+	value_sum = 0
+	for order in inventory:
+		value_sum += order[2]
+	return value_sum
