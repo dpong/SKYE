@@ -11,24 +11,25 @@ import tensorflow.keras.backend as K
 
 class Build_model():
     def build_model(self, state_size, neurons, action_size, atoms, training):
-        #前面的LSTM層
+        # 前面的LSTM層
         state_input = Input(shape=state_size)
         lstm1 = LSTM(neurons, activation='sigmoid',return_sequences=False)(state_input)
 
-        #連結層
+        # 連結層
         d1 = Dense(neurons,activation='elu')(lstm1)
         d1_plus1 = Dense(neurons,activation='elu')(d1)
         d1_plus2 = Dense(neurons,activation='elu')(d1_plus1)
         d2 = Dense(neurons,activation='elu')(d1_plus2)
-
+        
+        # 開始 distribution
         noisy_distribution_list_a = []
         noisy_distribution_list_v = []
         duel_distribution_list_a = []
         duel_distribution_list_v = []
         duel_mean_list=[]
         advantage_list=[]
-        q_list=[]
-
+        output_list=[]
+        # 建立一堆 Noisy 層 with elu activations
         for i in range(action_size):
             noisy_distribution_list_a.append(
                 elu(NoisyDense(atoms, neurons, training, bias=True)(d2))
@@ -39,27 +40,28 @@ class Build_model():
             duel_distribution_list_a.append(
                 elu(NoisyDense(atoms, atoms, training, bias=True)(noisy_distribution_list_a[i]))
                 )
-          
-        value = elu(NoisyDense(atoms, atoms, training, bias=True)(noisy_distribution_list_v))
-        value = tf.reshape(value,[1, action_size, atoms])
+        
+        # deuling 計算 value     
+        value_in = tf.concat([t for t in noisy_distribution_list_v], 1)
+        value = elu(NoisyDense(atoms, atoms * action_size, training, bias=True)(value_in))
+        # Output shape is (None, atoms) 
 
-        print(value)
-
+        # dueling 計算 a 的 mean 值
+        a_mean = tf.reduce_mean(duel_distribution_list_a, 0)
+        
+        # (a - a_mean) + value 
         for i in range(action_size): 
-            duel_mean_list.append(
-                Lambda(lambda x: K.mean(x, axis=1, keepdims=True))(duel_distribution_list_a[i])
-                )
             advantage_list.append(
-                Subtract()([duel_distribution_list_a[i], duel_mean_list[i]])
+                Subtract()([duel_distribution_list_a[i], a_mean])
                 )
-            q_list.append(
+            output_list.append(
             Add()([value, advantage_list[i]])
                 )
 
-        #最後compile
-        model = Model(inputs=state_input, outputs=q_list)
+        # 最後compile
+        model = Model(inputs=state_input, outputs=output_list)
         model.compile(loss='mse', optimizer=Adam(lr=0.0001))
         
         return model
-    
+        # 輸出的值用什麼 activation 會再外面決定
     

@@ -47,7 +47,7 @@ class Agent:
 			print('-'*53+'Create new model!!'+'-'*53)
 		return model
 
-	#設定check point
+	# 設定check point
 	def _check_point(self):
 		cp_callback = tf.keras.callbacks.ModelCheckpoint(
 		filepath=self.checkpoint_path,
@@ -55,12 +55,12 @@ class Agent:
 		verbose=0)
 		return cp_callback
 
-	#把model的權重傳給target model
+	# 把model的權重傳給target model
 	def update_target_model(self):
 		self.target_model.set_weights(self.model.get_weights())
 
 	def act(self, state):
-		# 有NoisyNet在決定探索能力
+		# distributional
 		z = self.model.predict(state) # Return a list [1x51...]
 		z = softmax(z)
 		z_concat = np.vstack(z)
@@ -96,16 +96,18 @@ class Agent:
 			 verbose=0, callbacks = [self.cp_callback])
 	
 	def get_target_n_error_51(self, state, action, reward, next_state, done):
+		# 取該 action 的 log_softmax 為了計算 cross entropy loss
 		log_p = self.model.predict(state)
 		log_p = log_softmax(log_p[action])
-
+		# 一樣有 double dqn
 		z = self.model.predict(next_state)
 		z_ = self.target_model.predict(next_state)
 		z_concat = np.vstack(z)
 		q = np.sum(np.multiply(z_concat, np.array(self.z)), axis=1) 
 		optimal_action_idxs = np.argmax(q)
+		# init m 值
 		m_prob = [np.zeros((1, self.num_atoms)) for i in range(self.action_size)]
-		
+		# action 後更新 m 值
 		if done: # Distribution collapses to a single point
 			Tz = min(self.v_max, max(self.v_min, reward))
 			bj = (Tz - self.v_min) / self.delta_z 
@@ -124,24 +126,6 @@ class Agent:
 		
 		return m_prob, error
 
-	'''
-	# 更新Q和error
-	def get_target_n_error(self, state, action, reward, next_state, done):
-		#主model動作
-		result = self.model.predict(state)
-		old_result = result[0,action]
-		next_result = self.model.predict(next_state)
-		next_action = np.argmax(next_result[0])
-		#target model動作
-		t_next_result = self.target_model.predict(next_state)
-		#更新Q值: Double DQN的概念
-		result[0,action] = reward
-		if not done:
-			result[0,action] += self.gamma * t_next_result[0,next_action]
-		#計算error給PER
-		error = abs(old_result - result[0,action])
-		return result, error
-	'''
 
 
 	

@@ -34,6 +34,7 @@ class NoisyDense(tf.keras.layers.Layer):
         dtype='float32'),trainable=True)
         
     def call(self, inputs):
+        # Factor 式的 noisy
         if self.training:
             p = tf.random.normal([self.inputs_dim, self.units])
             q = tf.random.normal([51,])
