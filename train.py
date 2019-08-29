@@ -16,7 +16,7 @@ c_path = "models/{}/training.ckpt".format(ticker)
 m_path = "models/{}/model.h5".format(ticker)
 #取得歷史資料
 start = '2018-1-1'
-end = '2019-1-1'
+end = '2018-5-1'
 df = get_data(ticker, start, end)
 #df_ben = get_data('SPY', start, end)
 #起始各個class
@@ -41,6 +41,7 @@ for e in range(1, episode_count + 1):
 	trading.inventory = []
 	trading.highest_value[:] = 0
 	trading.win_count, trading.lose_count = 0, 0
+	trading.max_con_lose = 0
 	profolio.max_drawdown = 0
 	data[:,n_cash] = init_cash
 	data[:,n_holding] = 0
@@ -80,6 +81,10 @@ for e in range(1, episode_count + 1):
 			data[t+1,n_holding] = 0 
 
 		if done:
+			if not trading.win_count+trading.lose_count ==0:
+				win_r = 100 * trading.win_count / (trading.win_count+trading.lose_count)
+			else:
+				win_r = 0
 			sharp = profolio.sharp_ratio(data)
 			print("-"*124)
 			print("Episode " + str(e) + "/" + str(episode_count)
@@ -89,7 +94,7 @@ for e in range(1, episode_count + 1):
 			+ " | Realized Return Ratio: %.2f%%" % round(100 * trading.total_profit / trading.init_cash, 2))
 			print("Max DrawDown: %.2f%%" % round(-profolio.max_drawdown*100,2)
 			+ " | Sharp Ratio: %.2f%%" % sharp
-			+ " | Win Rate: %.2f%%" % round(100 * trading.win_count / (trading.win_count+trading.lose_count),2)
+			+ " | Win Rate: %.2f%%" % round(win_r,2)
 			+ " | Max Cont Lose: " + str(trading.max_con_lose)
 			+ " | Total Reward: " + str(round(trading.total_reward,2)))
 			print("-"*124)
@@ -102,7 +107,7 @@ for e in range(1, episode_count + 1):
 			+ " | Realized Return Ratio: %.2f%%" % round(100 * trading.total_profit / trading.init_cash, 2) +'\n')
 			log.write("Max DrawDown: %.2f%%" % round(-profolio.max_drawdown*100,2)
 			+ " | Sharp Ratio: %.2f%%" % sharp
-			+ " | Win Rate: %.2f%%" % round(100 * trading.win_count / (trading.win_count+trading.lose_count),2)
+			+ " | Win Rate: %.2f%%" % round(win_r,2)
 			+ " | Max Cont Lose: " + str(trading.max_con_lose)
 			+ " | Total Reward: " + str(round(trading.total_reward,2))+'\n')
 			log.write("-"*124 + '\n')

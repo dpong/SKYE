@@ -66,10 +66,9 @@ class Agent:
 
 	def act(self, state):
 		# distributional
-		z = self.model.predict(state) # Return a list [1x51...]
-		z = softmax(z)
-		z_concat = np.vstack(z)
-		q = np.sum(np.multiply(z_concat, np.array(self.z)), axis=1) 
+		p = self.model.predict(state) # Return a list [1x51...]
+		p_concat = np.vstack(p)
+		q = np.sum(np.multiply(p_concat, np.array(self.z)), axis=1) 
 
         # Pick action with the biggest Q value
 		action_idx = np.argmax(q)
@@ -101,35 +100,35 @@ class Agent:
 			 verbose=0, callbacks = [self.cp_callback])
 	
 	def get_target_n_error_51(self, state, action, reward, next_state, done):
-		# 取該 action 的 log_softmax 為了計算 cross entropy loss
-		log_p = self.model.predict(state)
-		log_p = log_softmax(log_p[action])
+		p = self.model.predict(state)
 		# 一樣有 double dqn
-		z = self.model.predict(next_state)
-		z_ = self.target_model.predict(next_state)
-		z_concat = np.vstack(z)
-		q = np.sum(np.multiply(z_concat, np.array(self.z)), axis=1) 
-		optimal_action_idxs = np.argmax(q)
+		p_next = self.model.predict(next_state)
+		p_t_next = self.target_model.predict(next_state)
+		p_concat = np.vstack(p_next)
+		q = np.sum(np.multiply(p_concat, np.array(self.z)), axis=1) 
+		next_action_idxs = np.argmax(q)
 		# init m 值
-		m_prob = [np.zeros((1, self.num_atoms)) for i in range(self.action_size)]
+		m_prob = [np.zeros((1, self.num_atoms))]
 		# action 後更新 m 值
 		if done: # Distribution collapses to a single point
 			Tz = min(self.v_max, max(self.v_min, reward))
 			bj = (Tz - self.v_min) / self.delta_z 
 			m_l, m_u = math.floor(bj), math.ceil(bj)
-			m_prob[action][0][int(m_l)] += (m_u - bj)
-			m_prob[action][0][int(m_u)] += (bj - m_l)
+			m_prob[0][0][int(m_l)] += (m_u - bj)
+			m_prob[0][0][int(m_u)] += (bj - m_l)
 		else:
 			for j in range(self.num_atoms):
 				Tz = min(self.v_max, max(self.v_min, reward + self.gamma * self.z[j]))
 				bj = (Tz - self.v_min) / self.delta_z
 				m_l, m_u = math.floor(bj), math.ceil(bj)
-				m_prob[action][0][int(m_l)] += z_[optimal_action_idxs][0][j] * (m_u - bj)
-				m_prob[action][0][int(m_u)] += z_[optimal_action_idxs][0][j] * (bj - m_l)
+				m_prob[0][0][int(m_l)] += p_t_next[next_action_idxs][0][j] * (m_u - bj)
+				m_prob[0][0][int(m_u)] += p_t_next[next_action_idxs][0][j] * (bj - m_l)
+		# 更新後放回p，回去訓練
+		p[action][0][:] = m_prob[0][0][:]
+		# 計算 cross entropy loss
+		error = -tf.reduce_sum(m_prob[0] * tf.math.log(p[action]))
 		
-		error = abs(tf.reduce_sum(m_prob[action] * log_p))
-		
-		return m_prob, error
+		return p, error
 
 
 

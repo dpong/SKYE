@@ -14,48 +14,63 @@ c_path = "models/{}/training.ckpt".format(ticker)
 start = '2018-1-1'
 end = '2019-1-1'
 df = get_data(ticker, start, end)
+#df_ben = get_data('SPY', start, end)
 #起始各個class
-trading = Trading()
-trading.unit = get_unit(df['Close'].mean(),init_cash) #目前都是操作固定單位
-trading.init_cash = init_cash
+trading = Trading(init_cash)
 profolio = Profolio(init_cash)
 #資料整合轉換
 data = init_data(df, init_cash)
+# n-step return
+step_n = 3
 #給agent初始化輸入的緯度
-input_shape, neurons = get_shape(data[:window_size+1],window_size)
+input_shape, neurons = get_shape(data[:window_size], window_size)
 agent = Agent(ticker, input_shape, neurons, c_path, is_eval=True)
 
-l = len(data) -1
+
+l = len(data) - step_n
 n_close = 0
 n_cash = -2  #cash資料放data的倒數第二個
 n_holding = -1  #holding資料放data的倒數第一個
+
+episode_count = 1
 
 for e in range(1, episode_count + 1):
 	trading.total_profit, trading.cash, trading.total_reward = 0, init_cash, 0
 	trading.inventory = []
 	trading.highest_value[:] = 0
+	trading.win_count, trading.lose_count = 0, 0
+	trading.max_con_lose = 0
 	profolio.max_drawdown = 0
 	data[:,n_cash] = init_cash
 	data[:,n_holding] = 0
 	for t in range(window_size+1, l):         #前面的資料要來預熱一下
 		state = getState(data, t, window_size)
-		next_state = getState(data, t + 1, window_size)
+		next_state = getState(data, t + step_n, window_size) 
 
 		action = agent.act(state)
-		
+
 		trading.reward = 0
 		#這邊交易的價格用當日的收盤價(t+1)代替，實際交易就是成交價格
-		traded_action = trading.policy(action, data[t+1][n_close], e, episode_count, t, l)
-				
+		traded_action = trading.policy(action, data[t+1, n_close], e, episode_count, t, l)
+
+		# 紀錄最大連續虧損
+		if trading.con_lose > trading.max_con_lose:
+			trading.max_con_lose = trading.con_lose
+
 		done = True if t == l - 1 else False
 
 		#計算max drawdown
-		profolio.eval_draw_down(trading.unit, data[t+1][n_close], trading.cash, trading.inventory, trading.commission)
+		profolio.eval_draw_down(data[t+1, n_close], trading.cash, trading.inventory, trading.commission)
 
+		if agent.memory.tree.n_entries > agent.batch_size:
+			agent.train_model()
+		
+		#本次動作回饋到下一個的data裡
 		data[t+1,n_cash] = trading.cash
 		if len(trading.inventory) > 0:
-			data[t+1,n_holding] = get_inventory_value(trading.inventory, trading.unit, data[t+1, n_close], trading.commission) 
-
+			data[t+1,n_holding] = get_inventory_value(trading.inventory, data[t+1, n_close], trading.commission)
+		else:
+			data[t+1,n_holding] = 0 
 
 		if done:
 			sharp = profolio.sharp_ratio(data)
@@ -67,5 +82,21 @@ for e in range(1, episode_count + 1):
 			+ " | Realized Return Ratio: %.2f%%" % round(100 * trading.total_profit / trading.init_cash, 2))
 			print("Max DrawDown: %.2f%%" % round(-profolio.max_drawdown*100,2)
 			+ " | Sharp Ratio: %.2f%%" % sharp
+			+ " | Win Rate: %.2f%%" % round(100 * trading.win_count / (trading.win_count+trading.lose_count),2)
+			+ " | Max Cont Lose: " + str(trading.max_con_lose)
 			+ " | Total Reward: " + str(round(trading.total_reward,2)))
 			print("-"*124)
+			# 寫一份到txt檔
+			log = open('train_result.txt','a')
+			log.write("Episode " + str(e) + "/" + str(episode_count)
+			+ " | Profolio: " + formatPrice(profolio.profolio_value) 
+			+ " | Total Profit: " + formatPrice(profolio.profolio_value - trading.init_cash)
+			+ " | Return Ratio: %.2f%%" % round(100 * (profolio.profolio_value - trading.init_cash) / trading.init_cash,2)
+			+ " | Realized Return Ratio: %.2f%%" % round(100 * trading.total_profit / trading.init_cash, 2) +'\n')
+			log.write("Max DrawDown: %.2f%%" % round(-profolio.max_drawdown*100,2)
+			+ " | Sharp Ratio: %.2f%%" % sharp
+			+ " | Win Rate: %.2f%%" % round(100 * trading.win_count / (trading.win_count+trading.lose_count),2)
+			+ " | Max Cont Lose: " + str(trading.max_con_lose)
+			+ " | Total Reward: " + str(round(trading.total_reward,2))+'\n')
+			log.write("-"*124 + '\n')
+			log.close()
