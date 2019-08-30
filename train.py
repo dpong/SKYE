@@ -31,7 +31,7 @@ input_shape, neurons = get_shape(data[:window_size], window_size)
 agent = Agent(ticker, input_shape, neurons, c_path, is_eval=False)
 
 
-l = len(data) - step_n
+l = int(len(data) - step_n)
 n_close = 0
 n_cash = -2  #cash資料放data的倒數第二個
 n_holding = -1  #holding資料放data的倒數第一個
@@ -85,7 +85,7 @@ for e in range(1, episode_count + 1):
 				win_r = 100 * trading.win_count / (trading.win_count+trading.lose_count)
 			else:
 				win_r = 0
-			sharp = profolio.sharp_ratio(data)
+			sharp = profolio.sharp_ratio(data, l)
 			print("-"*124)
 			print("Episode " + str(e) + "/" + str(episode_count)
 			+ " | Profolio: " + formatPrice(profolio.profolio_value) 
