@@ -7,9 +7,9 @@ from agent.model import Build_model
 from tensorflow.nn import softmax, log_softmax
 
 config = tf.compat.v1.ConfigProto()
-config.intra_op_parallelism_threads = 8
-config.inter_op_parallelism_threads = 8
-tf.compat.v1.Session(config=config)
+config.intra_op_parallelism_threads = 44
+config.inter_op_parallelism_threads = 44
+sess = tf.compat.v1.Session(config=config)
 
 class Agent:
 	def __init__(self, ticker, state_size, neurons, m_path, is_eval=False):
@@ -22,8 +22,8 @@ class Agent:
 		self.batch_size = 32
 
 		self.num_atoms = 51 # for C51
-		self.v_max = 10 
-		self.v_min = -10 
+		self.v_max = 1.5
+		self.v_min = -1.5 
 		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
 		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
 
@@ -100,12 +100,13 @@ class Agent:
 			 verbose=0, callbacks = [self.cp_callback])
 	
 	def get_target_n_error_51(self, state, action, reward, next_state, done):
+		# 計算q現實
 		p = self.model.predict(state)
+		old_q = np.sum(np.multiply(np.vstack(p), np.array(self.z)), axis=1) 
 		# 一樣有 double dqn
 		p_next = self.model.predict(next_state)
 		p_t_next = self.target_model.predict(next_state)
-		p_concat = np.vstack(p_next)
-		q = np.sum(np.multiply(p_concat, np.array(self.z)), axis=1) 
+		q = np.sum(np.multiply(np.vstack(p_next), np.array(self.z)), axis=1) 
 		next_action_idxs = np.argmax(q)
 		# init m 值
 		m_prob = [np.zeros((1, self.num_atoms))]
@@ -125,9 +126,12 @@ class Agent:
 				m_prob[0][0][int(m_u)] += p_t_next[next_action_idxs][0][j] * (bj - m_l)
 		# 更新後放回p，回去訓練
 		p[action][0][:] = m_prob[0][0][:]
+		# 計算q估計
+		new_q = np.sum(np.multiply(np.vstack(p), np.array(self.z)), axis=1) 
+		#計算 error 給PER
+		error = abs(old_q[action] - new_q[action])
 		# 計算 cross entropy loss
-		error = -tf.reduce_sum(m_prob[0] * tf.math.log(p[action]))
-		
+		#error = -tf.reduce_sum(m_prob[0] * tf.math.log(p[action]))
 		return p, error
 
 

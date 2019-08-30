@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import tensorflow as tf
 import numpy as np
 
+
 # Noisy Network with C51
 class NoisyDense(tf.keras.layers.Layer):
     def __init__(self, units, in_shape, activation = None, Noisy = True, bias = True):
@@ -32,7 +33,7 @@ class NoisyDense(tf.keras.layers.Layer):
         # Factor 式的 noisy
         #是訓練階段給高斯雜訊，不是就把epsilon設0
         if self.noisy:
-            p = tf.random.normal([inputs.shape[-1], self.units])
+            p = tf.random.normal([int(inputs.shape[-1]), self.units])
             q = tf.random.normal([1, self.units])
             f_p = tf.multiply(tf.sign(p), tf.pow(tf.abs(p), 0.5))
             f_q = tf.multiply(tf.sign(q), tf.pow(tf.abs(q), 0.5))

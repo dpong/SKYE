@@ -16,7 +16,7 @@ c_path = "models/{}/training.ckpt".format(ticker)
 m_path = "models/{}/model.h5".format(ticker)
 #取得歷史資料
 start = '2018-1-1'
-end = '2018-5-1'
+end = '2019-1-1'
 df = get_data(ticker, start, end)
 #df_ben = get_data('SPY', start, end)
 #起始各個class

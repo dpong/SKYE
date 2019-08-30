@@ -59,9 +59,10 @@ class Build_model():
                 )
 
         # 最後compile
+        learning_rate = 0.00005
+        #adam_op = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate, epsilon=0.00015)
         model = Model(inputs=state_input, outputs=output_list)
-        model.compile(loss='mse', optimizer=Adam(lr=0.001))
+        model.compile(loss='categorical_crossentropy', optimizer=Adam(learning_rate=learning_rate, epsilon=0.00015))
         
         return model
-        # 輸出的值用什麼 activation 會再外面決定
     
