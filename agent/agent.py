@@ -38,7 +38,7 @@ class Agent:
 		else:
 			self.model = self._model('  Model', training=False)
 		
-		self.cp_callback = self._check_point()
+		#self.cp_callback = self._check_point()
 		
 		
 	def _model(self, model_name, training):
@@ -51,7 +51,7 @@ class Agent:
 		else:
 			print('-'*53+'Create new model!!'+'-'*53)
 		return model
-
+	'''
 	# 設定check point
 	def _check_point(self):
 		cp_callback = tf.keras.callbacks.ModelCheckpoint(
@@ -59,6 +59,7 @@ class Agent:
 		save_weights_only=True,
 		verbose=0)
 		return cp_callback
+	'''
 
 	# 把model的權重傳給target model
 	def update_target_model(self):
@@ -133,6 +134,6 @@ class Agent:
 		
 		#train model
 		self.model.fit(state_inputs, p, batch_size=self.batch_size, epochs = 1,
-			 verbose=0, callbacks = [self.cp_callback])
+			 verbose=0)
 
 	

@@ -9,7 +9,7 @@ ticker, window_size = 'TSLA', 20
 episode_count = 1
 init_cash = 1000000
 #要給checkpoint個路徑
-c_path = "models/{}/training.ckpt".format(ticker)
+m_path = "models/{}/model_weights".format(ticker)
 #取得歷史資料
 start = '2018-1-1'
 end = '2019-1-1'
@@ -24,7 +24,7 @@ data = init_data(df, init_cash)
 step_n = 3
 #給agent初始化輸入的緯度
 input_shape, neurons = get_shape(data[:window_size], window_size)
-agent = Agent(ticker, input_shape, neurons, c_path, is_eval=True)
+agent = Agent(ticker, input_shape, neurons, m_path, is_eval=True)
 
 
 l = len(data) - step_n
