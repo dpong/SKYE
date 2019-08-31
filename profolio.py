@@ -22,7 +22,11 @@ class Profolio():
             if drawdown < self.max_drawdown:
                 self.max_drawdown = drawdown
 
+<<<<<<< HEAD
     def sharp_ratio(self, data, step_n):  
+=======
+    def sharp_ratio(self, data, step_n):  # l = len(data) - step_n
+>>>>>>> gpu-version
         interest = 2  #無風險利率(%)
         m1 = data[0,-2] + data[0,-1]  # cash + holding = profolio value
         last = data[len(data)-step_n,-2] + data[len(data)-step_n,-1]

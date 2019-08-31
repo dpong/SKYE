@@ -56,6 +56,7 @@ class Agent:
 	def _check_point(self):
 		cp_callback = tf.keras.callbacks.ModelCheckpoint(
 		filepath=self.checkpoint_path,
+		save_best_only=True,
 		save_weights_only=True,
 		verbose=0)
 		return cp_callback
@@ -134,6 +135,5 @@ class Agent:
 		#error = -tf.reduce_sum(m_prob[0] * tf.math.log(p[action]))
 		return p, error
 
-
-
+		
 	

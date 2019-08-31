@@ -13,10 +13,14 @@ ticker, window_size, episode_count = sys.argv[1], int(sys.argv[2]), int(sys.argv
 init_cash = 1000000
 #要給checkpoint個路徑
 c_path = "models/{}/training.ckpt".format(ticker)
-m_path = "models/{}/model.h5".format(ticker)
+m_path = "models/{}/model_weights".format(ticker)
 #取得歷史資料
 start = '2018-1-1'
+<<<<<<< HEAD
 end = '2018-4-1'
+=======
+end = '2018-5-1'
+>>>>>>> gpu-version
 df = get_data(ticker, start, end)
 #df_ben = get_data('SPY', start, end)
 #起始各個class
@@ -85,7 +89,12 @@ for e in range(1, episode_count + 1):
 				win_r = 100 * trading.win_count / (trading.win_count+trading.lose_count)
 			else:
 				win_r = 0
+<<<<<<< HEAD
 			sharp = profolio.sharp_ratio(data, step_n)
+=======
+			sharp = profolio.sharp_ratio(data, l)
+			agent.model.save_weights(m_path, save_format='tf')
+>>>>>>> gpu-version
 			print("-"*124)
 			print("Episode " + str(e) + "/" + str(episode_count)
 			+ " | Profolio: " + formatPrice(profolio.profolio_value) 
