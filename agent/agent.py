@@ -16,10 +16,10 @@ class Agent:
 		self.state_size = state_size # normalized previous days
 		self.action_size = 4 
 		self.neurons = neurons
-		self.memory_size = 1000 #記憶長度
+		self.memory_size = 3000 #記憶長度
 		self.memory = Memory(self.memory_size)
 		self.gamma = 0.95
-		self.batch_size = 32
+		self.batch_size = 512
 
 		self.num_atoms = 51 # for C51
 		self.v_max = 1.5
@@ -56,7 +56,6 @@ class Agent:
 	def _check_point(self):
 		cp_callback = tf.keras.callbacks.ModelCheckpoint(
 		filepath=self.checkpoint_path,
-		save_best_only=True,
 		save_weights_only=True,
 		verbose=0)
 		return cp_callback
@@ -78,62 +77,62 @@ class Agent:
 	# Prioritized experience replay
 	# save sample (error,<s,a,r,s'>) to the replay memory
 	def append_sample(self, state, action, reward, next_state, done):
-		target, error = self.get_target_n_error_51(state, action, reward, next_state, done)
-		self.memory.add(error,(state, action, reward, next_state, done))
+		max_p = np.max(self.memory.tree.tree[-self.memory.capacity:])
+		if max_p == 0:
+			max_p = self.memory.abs_err_upper  # clipped abs error feat 莫煩
+		self.memory.add(max_p, (state, action, reward, next_state, done))  # set the max p for new p
 
 	def train_model(self):
 		# pick samples from prioritized replay memory (with batch_size)
 		mini_batch, idxs, is_weights = self.memory.sample(self.batch_size)
 
-		for i in range(self.batch_size):
-			target, error = self.get_target_n_error_51(
-				mini_batch[i][0], #state
-				mini_batch[i][1], #action
-				mini_batch[i][2], #reward
-				mini_batch[i][3], #next_state
-				mini_batch[i][4]  #done
-				)
-
-			idx = idxs[i] # update priority
-			self.memory.update(idx, error)
-			#train model
-			self.model.fit(mini_batch[i][0], target, epochs = 1,
-			 verbose=0, callbacks = [self.cp_callback])
-	
-	def get_target_n_error_51(self, state, action, reward, next_state, done):
-		# 計算q現實
-		p = self.model.predict(state)
-		old_q = np.sum(np.multiply(np.vstack(p), np.array(self.z)), axis=1) 
-		# 一樣有 double dqn
-		p_next = self.model.predict(next_state)
-		p_t_next = self.target_model.predict(next_state)
-		q = np.sum(np.multiply(np.vstack(p_next), np.array(self.z)), axis=1) 
-		next_action_idxs = np.argmax(q)
-		# init m 值
-		m_prob = [np.zeros((1, self.num_atoms))]
-		# action 後更新 m 值
-		if done: # Distribution collapses to a single point
-			Tz = min(self.v_max, max(self.v_min, reward))
-			bj = (Tz - self.v_min) / self.delta_z 
-			m_l, m_u = math.floor(bj), math.ceil(bj)
-			m_prob[0][0][int(m_l)] += (m_u - bj)
-			m_prob[0][0][int(m_u)] += (bj - m_l)
-		else:
-			for j in range(self.num_atoms):
-				Tz = min(self.v_max, max(self.v_min, reward + self.gamma * self.z[j]))
-				bj = (Tz - self.v_min) / self.delta_z
-				m_l, m_u = math.floor(bj), math.ceil(bj)
-				m_prob[0][0][int(m_l)] += p_t_next[next_action_idxs][0][j] * (m_u - bj)
-				m_prob[0][0][int(m_u)] += p_t_next[next_action_idxs][0][j] * (bj - m_l)
-		# 更新後放回p，回去訓練
-		p[action][0][:] = m_prob[0][0][:]
-		# 計算q估計
-		new_q = np.sum(np.multiply(np.vstack(p), np.array(self.z)), axis=1) 
-		#計算 error 給PER
-		error = abs(old_q[action] - new_q[action])
-		# 計算 cross entropy loss
-		#error = -tf.reduce_sum(m_prob[0] * tf.math.log(p[action]))
-		return p, error
-
+		state_inputs = np.zeros(((self.batch_size,) + self.state_size)) 
+		next_states = np.zeros(((self.batch_size,) + self.state_size))
+		m_prob = [np.zeros((self.batch_size, self.num_atoms))]
+		action, reward, done = [], [], []
 		
+		for i in range(self.batch_size):
+			state_inputs[i,:,:] = mini_batch[i][0]
+			action.append(mini_batch[i][1])
+			reward.append(mini_batch[i][2])
+			next_states[i,:,:] = mini_batch[i][3]
+			done.append(mini_batch[i][4])
+		
+		p = self.model.predict(state_inputs)
+		p_next = self.model.predict(next_states) # Return a list [32x51, 32x51, 32x51]
+		p_t_next = self.target_model.predict(next_states) # Return a list [32x51, 32x51, 32x51]
+		old_q = np.sum(np.multiply(np.vstack(p), np.array(self.z)), axis=1) 
+		old_q = old_q.reshape((self.batch_size, self.action_size), order='F')
+		optimal_action_idxs = []
+		q = np.sum(np.multiply(np.vstack(p_next), np.array(self.z)), axis=1) # length (num_atoms x num_actions)
+		q = q.reshape((self.batch_size, self.action_size), order='F')
+		optimal_action_idxs = np.argmax(q, axis=1)
+		
+		for i in range(self.batch_size):
+			if done[i]: # Terminal State
+				Tz = min(self.v_max, max(self.v_min, reward[i]))
+				bj = (Tz - self.v_min) / self.delta_z 
+				m_l, m_u = math.floor(bj), math.ceil(bj)
+				m_prob[0][i][int(m_l)] += (m_u - bj)
+				m_prob[0][i][int(m_u)] += (bj - m_l)
+			else:
+				for j in range(self.num_atoms):
+					Tz = min(self.v_max, max(self.v_min, reward[i] + self.gamma * self.z[j]))
+					bj = (Tz - self.v_min) / self.delta_z
+					m_l, m_u = math.floor(bj), math.ceil(bj)
+					m_prob[0][i][int(m_l)] += p_t_next[optimal_action_idxs[i]][i][j] * (m_u - bj)
+					m_prob[0][i][int(m_u)] += p_t_next[optimal_action_idxs[i]][i][j] * (bj - m_l)
+			
+			p[action[i]][i][:] = m_prob[0][i][:]
+			
+		new_q = np.sum(np.multiply(np.vstack(p), np.array(self.z)), axis=1) 
+		new_q = new_q.reshape((self.batch_size, self.action_size), order='F')
+		for i in range(self.batch_size):
+			error = abs(old_q[i][action[i]] - new_q[i][action[i]])
+			self.memory.update(idxs[i], error)
+		
+		#train model
+		self.model.fit(state_inputs, p, batch_size=self.batch_size, epochs = 1,
+			 verbose=0, callbacks = [self.cp_callback])
+
 	

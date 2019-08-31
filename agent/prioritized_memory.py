@@ -13,6 +13,7 @@ class Memory:  # stored as ( s, a, r, s_ ) in SumTree
     def __init__(self, capacity):
         self.tree = SumTree(capacity)
         self.capacity = capacity
+        self.abs_err_upper = 1.  # clipped abs error
 
     def _get_priority(self, error):
         return (np.abs(error) + self.e) ** self.a

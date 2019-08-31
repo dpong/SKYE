@@ -16,7 +16,7 @@ c_path = "models/{}/training.ckpt".format(ticker)
 m_path = "models/{}/model_weights".format(ticker)
 #取得歷史資料
 start = '2018-1-1'
-end = '2018-5-1'
+end = '2019-1-1'
 df = get_data(ticker, start, end)
 #df_ben = get_data('SPY', start, end)
 #起始各個class
@@ -35,6 +35,7 @@ l = int(len(data) - step_n)
 n_close = 0
 n_cash = -2  #cash資料放data的倒數第二個
 n_holding = -1  #holding資料放data的倒數第一個
+target_update = 0  # 每train個幾次就update
 
 for e in range(1, episode_count + 1):
 	trading.total_profit, trading.cash, trading.total_reward = 0, init_cash, 0
@@ -45,6 +46,7 @@ for e in range(1, episode_count + 1):
 	profolio.max_drawdown = 0
 	data[:,n_cash] = init_cash
 	data[:,n_holding] = 0
+	train_count = 0
 	for t in range(window_size, l):         #前面的資料要來預熱一下
 		state = getState(data, t, window_size)
 		next_state = getState(data, t + step_n, window_size) 
@@ -62,16 +64,20 @@ for e in range(1, episode_count + 1):
 		done = True if t == l - 1 else False
 	
 		agent.append_sample(state, traded_action, trading.reward, next_state, done)
+		# 紀錄存入多少記憶	
+		train_count += 1
+		# 動作一定次數才會訓練
+		if train_count > agent.batch_size:
+			agent.train_model()
+			train_count = 0
+			target_update +=1
 
-		#訓練過程分5段來更新traget_model
-		if t % int(l/5) == 0:
+		if target_update == 5:
 			agent.update_target_model()
-	
+			target_update = 0
+
 		#計算max drawdown
 		profolio.eval_draw_down(data[t+1, n_close], trading.cash, trading.inventory, trading.commission)
-
-		if agent.memory.tree.n_entries > agent.batch_size:
-			agent.train_model()
 		
 		#本次動作回饋到下一個的data裡
 		data[t+1,n_cash] = trading.cash
