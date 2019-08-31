@@ -5,8 +5,8 @@ import numpy as np
 
 # Noisy Network with C51
 class NoisyDense(tf.keras.layers.Layer):
-    def __init__(self, units, in_shape, activation = None, Noisy = True, bias = True):
-        super(NoisyDense, self).__init__()
+    def __init__(self, units, in_shape, activation = None, Noisy = True, bias = True, **kwargs):  # 要加上**kwargs，主層在存取時才不會報錯
+        super(NoisyDense, self).__init__(**kwargs)
         self.units = units
         self.noisy = Noisy
         self.activation_function = tf.keras.layers.Activation(activation = activation)

@@ -5,14 +5,14 @@ from profolio import Profolio
 import sys
 
 
-ticker, window_size = 'TSLA', 20
+ticker, window_size = 'AAPL', 20
 episode_count = 1
 init_cash = 1000000
 #要給checkpoint個路徑
 c_path = "models/{}/training.ckpt".format(ticker)
 #取得歷史資料
 start = '2018-1-1'
-end = '2018-5-1'
+end = '2019-1-1'
 df = get_data(ticker, start, end)
 #df_ben = get_data('SPY', start, end)
 #起始各個class
@@ -77,7 +77,7 @@ for e in range(1, episode_count + 1):
 				win_r = 100 * trading.win_count / (trading.win_count+trading.lose_count)
 			else:
 				win_r = 0
-			sharp = profolio.sharp_ratio(data)
+			sharp = profolio.sharp_ratio(data, step_n)
 			print("-"*124)
 			print("Episode " + str(e) + "/" + str(episode_count)
 			+ " | Profolio: " + formatPrice(profolio.profolio_value) 
