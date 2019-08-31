@@ -5,7 +5,7 @@ from profolio import Profolio
 import sys
 
 
-ticker, window_size = 'TSLA', 30
+ticker, window_size = 'TSLA', 20
 episode_count = 1
 init_cash = 1000000
 #要給checkpoint個路徑
@@ -62,9 +62,7 @@ for e in range(1, episode_count + 1):
 		#計算max drawdown
 		profolio.eval_draw_down(data[t+1, n_close], trading.cash, trading.inventory, trading.commission)
 
-		if agent.memory.tree.n_entries > agent.batch_size:
-			agent.train_model()
-		
+
 		#本次動作回饋到下一個的data裡
 		data[t+1,n_cash] = trading.cash
 		if len(trading.inventory) > 0:
