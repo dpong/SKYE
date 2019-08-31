@@ -16,14 +16,14 @@ class Agent:
 		self.state_size = state_size # normalized previous days
 		self.action_size = 4 
 		self.neurons = neurons
-		self.memory_size = 3000 #記憶長度
+		self.memory_size = 50000 #記憶長度
 		self.memory = Memory(self.memory_size)
 		self.gamma = 0.95
-		self.batch_size = 512
+		self.batch_size = 128
 
 		self.num_atoms = 51 # for C51
-		self.v_max = 1.5
-		self.v_min = -1.5 
+		self.v_max = 10
+		self.v_min = -10 
 		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
 		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
 
@@ -89,7 +89,7 @@ class Agent:
 
 		state_inputs = np.zeros(((self.batch_size,) + self.state_size)) 
 		next_states = np.zeros(((self.batch_size,) + self.state_size))
-		m_prob = [np.zeros((self.batch_size, self.num_atoms))]
+		m_prob = [np.zeros((self.batch_size, self.num_atoms)) for i in range(self.action_size)]
 		action, reward, done = [], [], []
 		
 		for i in range(self.batch_size):
@@ -114,22 +114,23 @@ class Agent:
 				Tz = min(self.v_max, max(self.v_min, reward[i]))
 				bj = (Tz - self.v_min) / self.delta_z 
 				m_l, m_u = math.floor(bj), math.ceil(bj)
-				m_prob[0][i][int(m_l)] += (m_u - bj)
-				m_prob[0][i][int(m_u)] += (bj - m_l)
+				m_prob[action[i]][i][int(m_l)] += (m_u - bj)
+				m_prob[action[i]][i][int(m_u)] += (bj - m_l)
 			else:
 				for j in range(self.num_atoms):
 					Tz = min(self.v_max, max(self.v_min, reward[i] + self.gamma * self.z[j]))
 					bj = (Tz - self.v_min) / self.delta_z
 					m_l, m_u = math.floor(bj), math.ceil(bj)
-					m_prob[0][i][int(m_l)] += p_t_next[optimal_action_idxs[i]][i][j] * (m_u - bj)
-					m_prob[0][i][int(m_u)] += p_t_next[optimal_action_idxs[i]][i][j] * (bj - m_l)
+					m_prob[action[i]][i][int(m_l)] += p_t_next[optimal_action_idxs[i]][i][j] * (m_u - bj)
+					m_prob[action[i]][i][int(m_u)] += p_t_next[optimal_action_idxs[i]][i][j] * (bj - m_l)
 			
-			p[action[i]][i][:] = m_prob[0][i][:]
+			p[action[i]][i][:] = m_prob[action[i]][i][:]
 			
 		new_q = np.sum(np.multiply(np.vstack(p), np.array(self.z)), axis=1) 
 		new_q = new_q.reshape((self.batch_size, self.action_size), order='F')
 		for i in range(self.batch_size):
 			error = abs(old_q[i][action[i]] - new_q[i][action[i]])
+			error *= is_weights[i]
 			self.memory.update(idxs[i], error)
 		
 		#train model

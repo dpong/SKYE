@@ -5,7 +5,7 @@ from profolio import Profolio
 import sys
 
 
-ticker, window_size = 'TSLA', 20
+ticker, window_size = 'TSLA', 30
 episode_count = 1
 init_cash = 1000000
 #要給checkpoint個路徑
