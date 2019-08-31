@@ -62,7 +62,7 @@ class Build_model():
         learning_rate = 0.0000625
         #adam_op = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate, epsilon=0.00015)
         model = Model(inputs=state_input, outputs=output_list)
-        model.compile(loss='categorical_crossentropy', optimizer=Adam(learning_rate=learning_rate, epsilon=0.00015))
+        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=learning_rate))
         
         return model
     

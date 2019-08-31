@@ -16,7 +16,7 @@ class Agent:
 		self.state_size = state_size # normalized previous days
 		self.action_size = 4 
 		self.neurons = neurons
-		self.memory_size = 50000 #記憶長度
+		self.memory_size = 10000 #記憶長度
 		self.memory = Memory(self.memory_size)
 		self.gamma = 0.95
 		self.batch_size = 128
@@ -51,16 +51,7 @@ class Agent:
 		else:
 			print('-'*53+'Create new model!!'+'-'*53)
 		return model
-	'''
-	# 設定check point
-	def _check_point(self):
-		cp_callback = tf.keras.callbacks.ModelCheckpoint(
-		filepath=self.checkpoint_path,
-		save_weights_only=True,
-		verbose=0)
-		return cp_callback
-	'''
-
+	
 	# 把model的權重傳給target model
 	def update_target_model(self):
 		self.target_model.set_weights(self.model.get_weights())
