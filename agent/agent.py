@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import tensorflow as tf
+import tensorflow.keras.backend as K
 import os, random, math
 import numpy as np
 from agent.prioritized_memory import Memory
@@ -9,7 +10,7 @@ from tensorflow.nn import softmax, log_softmax
 config = tf.compat.v1.ConfigProto()
 config.intra_op_parallelism_threads = 44
 config.inter_op_parallelism_threads = 44
-sess = tf.compat.v1.Session(config=config)
+tf.compat.v1.Session(config=config)
 
 class Agent:
 	def __init__(self, ticker, state_size, neurons, m_path, is_eval=False):
@@ -20,9 +21,6 @@ class Agent:
 		self.memory = Memory(self.memory_size)
 		self.gamma = 0.95
 		self.batch_size = 128
-		self.epsilon = 1.0
-		self.epsilon_min = 0.01
-		self.epsilon_decay = 0.995
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
 		self.checkpoint_dir = os.path.dirname(self.checkpoint_path)
@@ -33,9 +31,6 @@ class Agent:
 			self.target_model = self._model(' Target', training=True)
 		else:
 			self.model = self._model('  Model', training=False)
-		
-		#self.cp_callback = self._check_point()
-		
 		
 	def _model(self, model_name, training):
 		ddqn = Build_model()
@@ -53,8 +48,6 @@ class Agent:
 		self.target_model.set_weights(self.model.get_weights())
 
 	def act(self, state):
-		if not self.is_eval and np.random.rand() <= self.epsilon:
-			return random.randrange(self.action_size)
 		options = self.model.predict(state)
 		return np.argmax(options[0]) # array裡面最大值的位置號
 
@@ -102,9 +95,9 @@ class Agent:
 		#train model
 		self.model.fit(state_inputs, result, batch_size=self.batch_size, epochs = 1,
 			 verbose=0)
+		self.model.save_weights(self.checkpoint_path, save_format='tf')
+		K.clear_session()
+		
 
-		if self.epsilon > self.epsilon_min:
-			#貪婪度遞減   
-			self.epsilon *= self.epsilon_decay 
 
 	

@@ -92,7 +92,6 @@ for e in range(1, episode_count + 1):
 			else:
 				win_r = 0
 			sharp = profolio.sharp_ratio(data, l)
-			agent.model.save_weights(m_path, save_format='tf')
 			print("-"*124)
 			print("Episode " + str(e) + "/" + str(episode_count)
 			+ " | Profolio: " + formatPrice(profolio.profolio_value) 

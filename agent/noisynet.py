@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 
 
-# Noisy Network with C51
+# Noisy Network
 class NoisyDense(tf.keras.layers.Layer):
     def __init__(self, units, in_shape, activation = None, Noisy = True, bias = True, **kwargs):  # 要加上**kwargs，主層在存取時才不會報錯
         super(NoisyDense, self).__init__(**kwargs)
@@ -12,7 +12,7 @@ class NoisyDense(tf.keras.layers.Layer):
         self.activation_function = tf.keras.layers.Activation(activation = activation)
         
         # mu亂數，sigma常數0.1 
-        mu_init = tf.random_uniform_initializer(minval=-1, maxval=1)
+        mu_init = tf.keras.initializers.glorot_normal()
         sigma_init = tf.constant_initializer(value=0.1)
         # need Bias or not
         mu_bias_init = mu_init if bias else tf.zeros_initializer()
