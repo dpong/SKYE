@@ -67,7 +67,6 @@ class Trading():
         self.total_reward += self.reward
         return action
 
-
     def _hold(self, close, e, episode_count, t, l):
         if len(self.inventory) > 0:
             if self.inventory[0][-1] == 'long':
