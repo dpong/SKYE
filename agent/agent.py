@@ -21,8 +21,8 @@ class Agent:
 		self.gamma = 0.95
 		self.batch_size = 128
 		self.num_atoms = 51 # for C51
-		self.v_max = 10
-		self.v_min = -10 
+		self.v_max = 1.5
+		self.v_min = -1.5 
 		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
 		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
 		self.is_eval = is_eval
