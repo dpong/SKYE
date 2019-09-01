@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import tensorflow as tf
+import tensorflow.keras.backend as K
 import os, random, math
 import numpy as np
 from agent.prioritized_memory import Memory
 from agent.model import Build_model
-from tensorflow.nn import softmax, log_softmax
 
 config = tf.compat.v1.ConfigProto()
 config.intra_op_parallelism_threads = 44
@@ -19,14 +19,12 @@ class Agent:
 		self.memory_size = 10000 #記憶長度
 		self.memory = Memory(self.memory_size)
 		self.gamma = 0.95
-		self.batch_size = 128
-
+		self.batch_size = 2
 		self.num_atoms = 51 # for C51
 		self.v_max = 10
 		self.v_min = -10 
 		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
 		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
-
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
 		self.checkpoint_dir = os.path.dirname(self.checkpoint_path)
@@ -37,9 +35,6 @@ class Agent:
 			self.target_model = self._model(' Target', training=True)
 		else:
 			self.model = self._model('  Model', training=False)
-		
-		#self.cp_callback = self._check_point()
-		
 		
 	def _model(self, model_name, training):
 		ddqn = Build_model()
@@ -61,7 +56,6 @@ class Agent:
 		p = self.model.predict(state) # Return a list [1x51...]
 		p_concat = np.vstack(p)
 		q = np.sum(np.multiply(p_concat, np.array(self.z)), axis=1) 
-
         # Pick action with the biggest Q value
 		action_idx = np.argmax(q)
 		return action_idx
@@ -89,17 +83,18 @@ class Agent:
 			reward.append(mini_batch[i][2])
 			next_states[i,:,:] = mini_batch[i][3]
 			done.append(mini_batch[i][4])
-		
+
 		p = self.model.predict(state_inputs)
 		p_next = self.model.predict(next_states) # Return a list [32x51, 32x51, 32x51]
 		p_t_next = self.target_model.predict(next_states) # Return a list [32x51, 32x51, 32x51]
 		old_q = np.sum(np.multiply(np.vstack(p), np.array(self.z)), axis=1) 
 		old_q = old_q.reshape((self.batch_size, self.action_size), order='F')
+
 		optimal_action_idxs = []
 		q = np.sum(np.multiply(np.vstack(p_next), np.array(self.z)), axis=1) # length (num_atoms x num_actions)
 		q = q.reshape((self.batch_size, self.action_size), order='F')
 		optimal_action_idxs = np.argmax(q, axis=1)
-		
+
 		for i in range(self.batch_size):
 			if done[i]: # Terminal State
 				Tz = min(self.v_max, max(self.v_min, reward[i]))
@@ -115,17 +110,20 @@ class Agent:
 					m_prob[action[i]][i][int(m_l)] += p_t_next[optimal_action_idxs[i]][i][j] * (m_u - bj)
 					m_prob[action[i]][i][int(m_u)] += p_t_next[optimal_action_idxs[i]][i][j] * (bj - m_l)
 			
-			p[action[i]][i][:] = m_prob[action[i]][i][:]
-			
+			p[action[i]][i][:] = m_prob[action[i]][i][:]	
 		new_q = np.sum(np.multiply(np.vstack(p), np.array(self.z)), axis=1) 
 		new_q = new_q.reshape((self.batch_size, self.action_size), order='F')
 		for i in range(self.batch_size):
 			error = abs(old_q[i][action[i]] - new_q[i][action[i]])
+			print(error)
 			error *= is_weights[i]
+			print(idxs[i],error)
 			self.memory.update(idxs[i], error)
 		
 		#train model
-		self.model.fit(state_inputs, p, batch_size=self.batch_size, epochs = 1,
+		self.model.fit(state_inputs, m_prob, batch_size=self.batch_size, epochs = 1,
 			 verbose=0)
+		self.model.save_weights(self.checkpoint_path, save_format='tf')
+		K.clear_session()
 
 	
