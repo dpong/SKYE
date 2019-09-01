@@ -12,6 +12,7 @@ import tensorflow.keras.backend as K
 class Build_model():
     def build_model(self, state_size, neurons, action_size, training):
         # 前面的卷積層
+        
         state_input = Input(shape=state_size)
         con1 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(state_input)
         con_norm1 = BatchNormalization()(con1)

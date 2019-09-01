@@ -70,33 +70,34 @@ class Agent:
 		# pick samples from prioritized replay memory (with batch_size)
 		mini_batch, idxs, is_weights = self.memory.sample(self.batch_size)
 
-		state_inputs = np.zeros(((self.batch_size,) + self.state_size)) 
-		next_states = np.zeros(((self.batch_size,) + self.state_size))
+		state_inputs = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
+		next_states = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
 		action, reward, done = [], [], []
 		
 		for i in range(self.batch_size):
-			state_inputs[i,:,:] = mini_batch[i][0]
+			state_inputs[i][:][:] = mini_batch[i][0]
 			action.append(mini_batch[i][1])
 			reward.append(mini_batch[i][2])
-			next_states[i,:,:] = mini_batch[i][3]
+			next_states[i][:][:] = mini_batch[i][3]
 			done.append(mini_batch[i][4])
 		
+		old = []
 		#主model動作
 		result = self.model.predict(state_inputs)
-		old_result = result
 		next_result = self.model.predict(next_states)
 		next_action = np.argmax(next_result, axis=1)
 		#target model動作
 		t_next_result = self.target_model.predict(next_states)
 		#更新Q值: Double DQN的概念
 		for i in range(self.batch_size):
-			result[i,action] = reward
-			if not done:
-				result[i,action[i]] += self.gamma * t_next_result[i,next_action[i]]
-				#計算error給PER
-				error = abs(old_result[i,action[i]] - result[i,action[i]])
-				error *= is_weights[i]
-				self.memory.update(idxs[i], error)
+			old.append(result[i][action[i]])
+			result[i][action[i]] = reward[i]
+			if not done[i]:
+				result[i][action[i]] = result[i][action[i]] + self.gamma * t_next_result[i][next_action[i]]
+			#計算error給PER
+			error = abs(old[i] - result[i][action[i]])
+			error *= is_weights[i]
+			self.memory.update(idxs[i], error)
 			
 		#train model
 		self.model.fit(state_inputs, result, batch_size=self.batch_size, epochs = 1,
