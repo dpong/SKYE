@@ -20,13 +20,9 @@ class Agent:
 		self.memory = Memory(self.memory_size)
 		self.gamma = 0.95
 		self.batch_size = 128
-
-		self.num_atoms = 51 # for C51
-		self.v_max = 10
-		self.v_min = -10 
-		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
-		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
-
+		self.epsilon = 1.0
+		self.epsilon_min = 0.01
+		self.epsilon_decay = 0.995
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
 		self.checkpoint_dir = os.path.dirname(self.checkpoint_path)
@@ -43,7 +39,7 @@ class Agent:
 		
 	def _model(self, model_name, training):
 		ddqn = Build_model()
-		model = ddqn.build_model(self.state_size, self.neurons, self.action_size, self.num_atoms, training)
+		model = ddqn.build_model(self.state_size, self.neurons, self.action_size, training)
 		if os.path.exists(self.check_index):
 			#如果已經有訓練過，就接著load權重
 			print('-'*52+'{} Weights loaded!!'.format(model_name)+'-'*52)
@@ -57,14 +53,10 @@ class Agent:
 		self.target_model.set_weights(self.model.get_weights())
 
 	def act(self, state):
-		# distributional
-		p = self.model.predict(state) # Return a list [1x51...]
-		p_concat = np.vstack(p)
-		q = np.sum(np.multiply(p_concat, np.array(self.z)), axis=1) 
-
-        # Pick action with the biggest Q value
-		action_idx = np.argmax(q)
-		return action_idx
+		if not self.is_eval and np.random.rand() <= self.epsilon:
+			return random.randrange(self.action_size)
+		options = self.model.predict(state)
+		return np.argmax(options[0]) # array裡面最大值的位置號
 
 	# Prioritized experience replay
 	# save sample (error,<s,a,r,s'>) to the replay memory
@@ -80,7 +72,6 @@ class Agent:
 
 		state_inputs = np.zeros(((self.batch_size,) + self.state_size)) 
 		next_states = np.zeros(((self.batch_size,) + self.state_size))
-		m_prob = [np.zeros((self.batch_size, self.num_atoms)) for i in range(self.action_size)]
 		action, reward, done = [], [], []
 		
 		for i in range(self.batch_size):
@@ -90,42 +81,29 @@ class Agent:
 			next_states[i,:,:] = mini_batch[i][3]
 			done.append(mini_batch[i][4])
 		
-		p = self.model.predict(state_inputs)
-		p_next = self.model.predict(next_states) # Return a list [32x51, 32x51, 32x51]
-		p_t_next = self.target_model.predict(next_states) # Return a list [32x51, 32x51, 32x51]
-		old_q = np.sum(np.multiply(np.vstack(p), np.array(self.z)), axis=1) 
-		old_q = old_q.reshape((self.batch_size, self.action_size), order='F')
-		optimal_action_idxs = []
-		q = np.sum(np.multiply(np.vstack(p_next), np.array(self.z)), axis=1) # length (num_atoms x num_actions)
-		q = q.reshape((self.batch_size, self.action_size), order='F')
-		optimal_action_idxs = np.argmax(q, axis=1)
-		
+		#主model動作
+		result = self.model.predict(state_inputs)
+		old_result = result
+		next_result = self.model.predict(next_states)
+		next_action = np.argmax(next_result, axis=1)
+		#target model動作
+		t_next_result = self.target_model.predict(next_states)
+		#更新Q值: Double DQN的概念
 		for i in range(self.batch_size):
-			if done[i]: # Terminal State
-				Tz = min(self.v_max, max(self.v_min, reward[i]))
-				bj = (Tz - self.v_min) / self.delta_z 
-				m_l, m_u = math.floor(bj), math.ceil(bj)
-				m_prob[action[i]][i][int(m_l)] += (m_u - bj)
-				m_prob[action[i]][i][int(m_u)] += (bj - m_l)
-			else:
-				for j in range(self.num_atoms):
-					Tz = min(self.v_max, max(self.v_min, reward[i] + self.gamma * self.z[j]))
-					bj = (Tz - self.v_min) / self.delta_z
-					m_l, m_u = math.floor(bj), math.ceil(bj)
-					m_prob[action[i]][i][int(m_l)] += p_t_next[optimal_action_idxs[i]][i][j] * (m_u - bj)
-					m_prob[action[i]][i][int(m_u)] += p_t_next[optimal_action_idxs[i]][i][j] * (bj - m_l)
+			result[i,action] = reward
+			if not done:
+				result[i,action[i]] += self.gamma * t_next_result[i,next_action[i]]
+				#計算error給PER
+				error = abs(old_result[i,action[i]] - result[i,action[i]])
+				error *= is_weights[i]
+				self.memory.update(idxs[i], error)
 			
-			p[action[i]][i][:] = m_prob[action[i]][i][:]
-			
-		new_q = np.sum(np.multiply(np.vstack(p), np.array(self.z)), axis=1) 
-		new_q = new_q.reshape((self.batch_size, self.action_size), order='F')
-		for i in range(self.batch_size):
-			error = abs(old_q[i][action[i]] - new_q[i][action[i]])
-			error *= is_weights[i]
-			self.memory.update(idxs[i], error)
-		
 		#train model
-		self.model.fit(state_inputs, p, batch_size=self.batch_size, epochs = 1,
+		self.model.fit(state_inputs, result, batch_size=self.batch_size, epochs = 1,
 			 verbose=0)
+
+		if self.epsilon > self.epsilon_min:
+			#貪婪度遞減   
+			self.epsilon *= self.epsilon_decay 
 
 	
