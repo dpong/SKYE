@@ -19,7 +19,7 @@ class Agent:
 		self.memory_size = 10000 #記憶長度
 		self.memory = Memory(self.memory_size)
 		self.gamma = 0.95
-		self.batch_size = 2
+		self.batch_size = 128
 		self.num_atoms = 51 # for C51
 		self.v_max = 10
 		self.v_min = -10 
@@ -115,9 +115,7 @@ class Agent:
 		new_q = new_q.reshape((self.batch_size, self.action_size), order='F')
 		for i in range(self.batch_size):
 			error = abs(old_q[i][action[i]] - new_q[i][action[i]])
-			print(error)
 			error *= is_weights[i]
-			print(idxs[i],error)
 			self.memory.update(idxs[i], error)
 		
 		#train model
