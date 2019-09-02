@@ -3,22 +3,15 @@ import random, math
 import pandas_datareader as pdr
 import pandas as pd
 from scipy import special
-from sklearn import preprocessing
 
-scaler = preprocessing.MinMaxScaler((-1,1))
 
 # prints formatted price
 def formatPrice(n):
 	return ("-$" if n < 0 else "$") + "{0:.2f}".format(abs(n))
-	
-#state資料標準化
-def minmaxscale(x):
-	return scaler.fit_transform(x)
 
 # returns an n-day state representation ending at time t
 def getState(data, t, n):
-	res = minmaxscale(data[t-n:t])
-	return np.array([res])  #修正input形狀
+	return np.array([data[t-n:t]])  #修正input形狀
 
 #model的輸入值起始
 def get_shape(data,window_size):

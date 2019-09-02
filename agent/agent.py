@@ -115,10 +115,6 @@ class Agent:
 			error = abs(old[i] - result[i][action[i]])
 			error *= is_weights[i]
 			self.memory.update(idxs[i], error)
-		
-		self.model.get_layer('Noisy_1').sample_noise()
-		self.model.get_layer('Noisy_2').sample_noise()
-		self.model.get_layer('Noisy_3').sample_noise()
 
 		#train model
 		grads = self._grad(self.model, state_inputs, result)
