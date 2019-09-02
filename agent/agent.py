@@ -95,7 +95,8 @@ class Agent:
 		#train model
 		self.model.fit(state_inputs, result, batch_size=self.batch_size, epochs = 1,
 			 verbose=0)
-		self.model.save_weights(self.checkpoint_path, save_format='tf')
+	
+	def clear_sess(self):
 		K.clear_session()
 		
 

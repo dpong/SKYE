@@ -38,7 +38,7 @@ class Build_model():
 
         # 最後compile
         model = Model(inputs=state_input, outputs=q)
-        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001, clipnorm=0.001))
+        model.compile(loss='mean_squared_error', optimizer=Adam(lr=0.001, clipnorm=0.001))
         
         return model
     
