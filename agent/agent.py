@@ -6,6 +6,8 @@ import numpy as np
 from agent.prioritized_memory import Memory
 from agent.model import Build_model
 from tensorflow.nn import softmax, log_softmax
+from tensorflow.compat.v1.train import get_or_create_global_step
+from tensorflow.compat.v1.losses import mean_squared_error
 
 config = tf.compat.v1.ConfigProto()
 config.intra_op_parallelism_threads = 44
@@ -27,28 +29,47 @@ class Agent:
 		self.check_index = self.checkpoint_path + '.index'   #checkpoint裡面的檔案多加了一個.index
 		
 		if is_eval==False:
-			self.model = self._model('  Model', training=True)
-			self.target_model = self._model(' Target', training=True)
+			self.model = self._model('  Model')
+			self.target_model = self._model(' Target')
 		else:
-			self.model = self._model('  Model', training=False)
+			self.model = self._model('  Model')
+
+		self.optimizer = tf.optimizers.Adam(learning_rate=0.01)
 		
-	def _model(self, model_name, training):
+	def _model(self, model_name):
 		ddqn = Build_model()
-		model = ddqn.build_model(self.state_size, self.neurons, self.action_size, training)
+		model = ddqn.build_model(self.state_size, self.neurons, self.action_size)
 		if os.path.exists(self.check_index):
 			#如果已經有訓練過，就接著load權重
 			print('-'*52+'{} Weights loaded!!'.format(model_name)+'-'*52)
 			model.load_weights(self.checkpoint_path)
 		else:
 			print('-'*53+'Create new model!!'+'-'*53)
+
+		if self.is_eval:
+			model.get_layer('Noisy_1').remove_noise()
+			model.get_layer('Noisy_2').remove_noise()
+			model.get_layer('Noisy_3').remove_noise()
+
 		return model
+	
+	def _loss(self, model, x, y):
+		y_ = self.model(x)
+		return mean_squared_error(y, y_) 
+	
+	def _grad(self, model, inputs, targets):
+		with tf.GradientTape() as tape:
+			loss_value = self._loss(self.model, inputs, targets)
+		
+		return tape.gradient(loss_value, self.model.trainable_variables)
 	
 	# 把model的權重傳給target model
 	def update_target_model(self):
 		self.target_model.set_weights(self.model.get_weights())
 
 	def act(self, state):
-		options = self.model.predict(state)
+		options = self.model(state)
+		options = options.numpy()
 		return np.argmax(options[0]) # array裡面最大值的位置號
 
 	# Prioritized experience replay
@@ -76,11 +97,14 @@ class Agent:
 		
 		old = []
 		#主model動作
-		result = self.model.predict(state_inputs)
-		next_result = self.model.predict(next_states)
+		result = self.model(state_inputs)
+		result = result.numpy()
+		next_result = self.model(next_states)
+		next_result = next_result.numpy()
 		next_action = np.argmax(next_result, axis=1)
 		#target model動作
-		t_next_result = self.target_model.predict(next_states)
+		t_next_result = self.target_model(next_states)
+		t_next_result = t_next_result.numpy()
 		#更新Q值: Double DQN的概念
 		for i in range(self.batch_size):
 			old.append(result[i][action[i]])
@@ -91,11 +115,16 @@ class Agent:
 			error = abs(old[i] - result[i][action[i]])
 			error *= is_weights[i]
 			self.memory.update(idxs[i], error)
-			
+		
+		self.model.get_layer('Noisy_1').sample_noise()
+		self.model.get_layer('Noisy_2').sample_noise()
+		self.model.get_layer('Noisy_3').sample_noise()
+
 		#train model
-		self.model.fit(state_inputs, result, batch_size=self.batch_size, epochs = 1,
-			 verbose=0)
-	
+		grads = self._grad(self.model, state_inputs, result)
+		self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables),
+			get_or_create_global_step())
+
 	def clear_sess(self):
 		K.clear_session()
 		
