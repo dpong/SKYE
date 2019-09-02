@@ -119,9 +119,13 @@ class Agent:
 			self.memory.update(idxs[i], error)
 		
 		#train model
-		self.model.fit(state_inputs, m_prob, batch_size=self.batch_size, epochs = 1,
+		self.model.fit(state_inputs, p, batch_size=self.batch_size, epochs = 1,
 			 verbose=0)
-		self.model.save_weights(self.checkpoint_path, save_format='tf')
+		#self.model.save_weights(self.checkpoint_path, save_format='tf')
+		#K.clear_session()
+		#tf.compat.v1.reset_default_graph()
+	
+	def clear_sess(self):
 		K.clear_session()
 
 	

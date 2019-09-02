@@ -22,48 +22,53 @@ class Build_model():
         gru4 = GRU(neurons, activation='elu',return_sequences=False)(gru3_norm)
         gru4_norm = BatchNormalization()(gru4)
         # 連結層
-        d2 = Dense(neurons, activation='elu')(gru4_norm)
-        d2_norm = BatchNormalization()(d2)
+        d1 = Dense(neurons, activation='elu')(gru4_norm)
+        d1_norm = BatchNormalization()(d1)
         # 開始 distribution
         noisy_distribution_list_a = []
         noisy_distribution_list_v = []
         noisy_norm_list_a = []
         noisy_norm_list_v = [] 
         duel_distribution_list_a = []
+        duel_norm_list_a = []
         advantage_list=[]
         output_list=[]
         # 建立一堆 Noisy 層 with elu activations
         for i in range(action_size):
             noisy_distribution_list_a.append(
-                NoisyDense(atoms, neurons, activation='elu', Noisy=training, bias=False)(d2)
+                NoisyDense(atoms, neurons, activation='elu', Noisy=training, bias=False)(d1_norm)
                 )
             noisy_norm_list_a.append(
                 BatchNormalization()(noisy_distribution_list_a[i])
             )
             noisy_distribution_list_v.append(
-                NoisyDense(atoms, neurons, activation='elu', Noisy=training, bias=False)(d2)
+                NoisyDense(atoms, neurons, activation='elu', Noisy=training, bias=False)(d1_norm)
                 )
             noisy_norm_list_v.append(
                 BatchNormalization()(noisy_distribution_list_v[i])
             )
             duel_distribution_list_a.append(
-                NoisyDense(atoms, atoms, activation='linear', Noisy=training, bias=True)(noisy_norm_list_a[i])
+                NoisyDense(atoms, atoms, activation='elu', Noisy=training, bias=True)(noisy_norm_list_a[i])
                 )
+            duel_norm_list_a.append(
+                BatchNormalization()(noisy_distribution_list_v[i])
+            )
         # deuling 計算 value     
         value_in = tf.concat([t for t in noisy_norm_list_v], 1)
-        value = NoisyDense(atoms, atoms * action_size, activation='linear', Noisy=training, bias=True)(value_in)
+        value = NoisyDense(atoms, atoms * action_size, activation='elu', Noisy=training, bias=True)(value_in)
+        value_norm = BatchNormalization()(value)
         # Output shape is (None, atoms) 
 
         # dueling 計算 a 的 mean 值
-        a_mean = tf.reduce_mean(duel_distribution_list_a, 0)
+        a_mean = tf.reduce_mean(duel_norm_list_a, 0)
         
         # (a - a_mean) + value 
         for i in range(action_size): 
             advantage_list.append(
-                Subtract()([duel_distribution_list_a[i], a_mean])
+                Subtract()([duel_norm_list_a[i], a_mean])
                 )
             output_list.append(
-            softmax(Add()([value, advantage_list[i]]))
+            softmax(Add()([value_norm, advantage_list[i]]))
                 )
 
         # 最後compile

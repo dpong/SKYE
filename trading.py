@@ -121,7 +121,7 @@ class Trading():
         if profit > 0 :
             self.win_count += 1
             self.con_lose = 0
-        else:
+        elif profit < 0 :
             self.lose_count += 1
             self.con_lose += 1
         self.total_profit += profit
@@ -172,7 +172,7 @@ class Trading():
         if profit > 0 :
             self.win_count += 1
             self.con_lose = 0
-        else:
+        elif profit < 0 :
             self.lose_count += 1
             self.con_lose += 1
         self.total_profit += profit
@@ -223,7 +223,7 @@ class Trading():
             if profit > 0 :
                 self.win_count += 1
                 self.con_lose = 0
-            else:
+            elif profit < 0 :
                 self.lose_count += 1
                 self.con_lose += 1
             self.reward = self.pr_ratio * (profit / price_value)
@@ -238,7 +238,7 @@ class Trading():
             if profit > 0 :
                 self.win_count += 1
                 self.con_lose = 0
-            else:
+            elif profit < 0 :
                 self.lose_count += 1
                 self.con_lose += 1
             self.reward = self.pr_ratio * (profit / price_value)
