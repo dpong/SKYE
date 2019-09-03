@@ -5,7 +5,7 @@ from agent.sumtree import SumTree
 #prioritized_memory by https://github.com/rlcode/per/blob/master/prioritized_memory.py
 
 class Memory:  # stored as ( s, a, r, s_ ) in SumTree
-    e = 0.01
+    e = 0.5
     a = 0.6
     beta = 0.4
     beta_increment_per_sampling = 0.001
@@ -13,6 +13,7 @@ class Memory:  # stored as ( s, a, r, s_ ) in SumTree
     def __init__(self, capacity):
         self.tree = SumTree(capacity)
         self.capacity = capacity
+        self.abs_err_upper = 1.  # clipped abs error
 
     def _get_priority(self, error):
         return (np.abs(error) + self.e) ** self.a

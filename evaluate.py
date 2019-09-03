@@ -5,11 +5,11 @@ from profolio import Profolio
 import sys
 
 
-ticker, window_size = 'AAPL', 20
+ticker, window_size = 'TSLA', 20
 episode_count = 1
 init_cash = 1000000
 #要給checkpoint個路徑
-c_path = "models/{}/training.ckpt".format(ticker)
+m_path = "models/{}/model_weights".format(ticker)
 #取得歷史資料
 start = '2018-1-1'
 end = '2019-1-1'
@@ -24,7 +24,7 @@ data = init_data(df, init_cash)
 step_n = 3
 #給agent初始化輸入的緯度
 input_shape, neurons = get_shape(data[:window_size], window_size)
-agent = Agent(ticker, input_shape, neurons, c_path, is_eval=True)
+agent = Agent(ticker, input_shape, neurons, m_path, is_eval=True)
 
 
 l = len(data) - step_n
@@ -62,9 +62,7 @@ for e in range(1, episode_count + 1):
 		#計算max drawdown
 		profolio.eval_draw_down(data[t+1, n_close], trading.cash, trading.inventory, trading.commission)
 
-		if agent.memory.tree.n_entries > agent.batch_size:
-			agent.train_model()
-		
+
 		#本次動作回饋到下一個的data裡
 		data[t+1,n_cash] = trading.cash
 		if len(trading.inventory) > 0:
