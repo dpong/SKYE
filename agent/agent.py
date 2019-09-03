@@ -8,6 +8,7 @@ from agent.model import Build_model
 from tensorflow.nn import softmax, log_softmax
 from tensorflow.compat.v1.train import get_or_create_global_step
 from tensorflow.compat.v1.losses import huber_loss
+from tensorflow.keras.utils import Progbar
 
 config = tf.compat.v1.ConfigProto()
 config.intra_op_parallelism_threads = 44
@@ -26,18 +27,23 @@ class Agent:
 		self.epsilon_decay = 0.995
 		self.gamma = 0.95
 		self.batch_size = 128
+		self.epoch_loss_avg = tf.keras.metrics.Mean()
+		self.epochs = 30
+		self.bar = Progbar(self.epochs)
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
 		self.checkpoint_dir = os.path.dirname(self.checkpoint_path)
 		self.check_index = self.checkpoint_path + '.index'   #checkpoint裡面的檔案多加了一個.index
 		
 		if is_eval==False:
+			self.training = True
 			self.model = self._model('  Model')
 			self.target_model = self._model(' Target')
 		else:
+			self.training = False
 			self.model = self._model('  Model')
-
-		self.optimizer = tf.optimizers.Adam(learning_rate=0.0001)
+			
+		self.optimizer = tf.optimizers.Adam(learning_rate=0.001)
 		
 	def _model(self, model_name):
 		ddqn = Build_model()
@@ -48,22 +54,8 @@ class Agent:
 			model.load_weights(self.checkpoint_path)
 		else:
 			print('-'*53+'Create new model!!'+'-'*53)
-		'''
-		if self.is_eval:
-			model.get_layer('Noisy_1').remove_noise()
-			model.get_layer('Noisy_2').remove_noise()
-			model.get_layer('Noisy_3').remove_noise()
-		'''
+		
 		return model
-	
-	def _loss(self, model, x, y):
-		y_ = self.model(x)
-		return huber_loss(y, y_)
-	
-	def _grad(self, model, inputs, targets):
-		with tf.GradientTape() as tape:
-			loss_value = self._loss(self.model, inputs, targets)
-		return loss_value, tape.gradient(loss_value, self.model.trainable_variables)
 	
 	# 把model的權重傳給target model
 	def update_target_model(self):
@@ -84,6 +76,16 @@ class Agent:
 			max_p = self.memory.abs_err_upper  # clipped abs error feat 莫煩
 		self.memory.add(max_p, (state, action, reward, next_state, done))  # set the max p for new p
 
+	# loss function
+	def _loss(self, model, x, y):
+		y_ = self.model(x)
+		return huber_loss(y, y_)
+	# gradient
+	def _grad(self, model, inputs, targets):
+		with tf.GradientTape() as tape:
+			loss_value = self._loss(self.model, inputs, targets)
+		return loss_value, tape.gradient(loss_value, self.model.trainable_variables)
+
 	def train_model(self):
 		# pick samples from prioritized replay memory (with batch_size)
 		mini_batch, idxs, is_weights = self.memory.sample(self.batch_size)
@@ -100,38 +102,38 @@ class Agent:
 			done.append(mini_batch[i][4])
 		
 		old = []
-		#主model動作
+		# 主model動作
 		result = self.model(state_inputs)
 		result = result.numpy()
 		next_result = self.model(next_states)
 		next_result = next_result.numpy()
 		next_action = np.argmax(next_result, axis=1)
-		#target model動作
+		# target model動作
 		t_next_result = self.target_model(next_states)
 		t_next_result = t_next_result.numpy()
-		#更新Q值: Double DQN的概念
+		# 更新Q值: Double DQN的概念
 		for i in range(self.batch_size):
 			old.append(result[i][action[i]])
 			result[i][action[i]] = reward[i]
 			if not done[i]:
 				result[i][action[i]] = result[i][action[i]] + self.gamma * t_next_result[i][next_action[i]]
-			#計算error給PER
+			# 計算error給PER
 			error = abs(old[i] - result[i][action[i]])
 			error *= is_weights[i]
 			self.memory.update(idxs[i], error)
 
-		#train model
-		epoch_loss_avg = tf.keras.metrics.Mean()
-		for i in range(self.batch_size):
+		# train model
+		for i in range(self.epochs):
 			loss_value, grads = self._grad(self.model, state_inputs, result)
 			self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables),
 				get_or_create_global_step())
-			epoch_loss_avg(loss_value)
-			print(i,epoch_loss_avg.result())
-		
+			self.epoch_loss_avg(loss_value)
+			self.bar.update(i, values=[('loss', self.epoch_loss_avg.result().numpy())])
+
 		if self.epsilon > self.epsilon_min:
 			#貪婪度遞減   
 			self.epsilon *= self.epsilon_decay 
+
 
 
 
