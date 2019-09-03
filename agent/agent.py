@@ -5,7 +5,7 @@ import os, random, math
 import numpy as np
 from agent.prioritized_memory import Memory
 from agent.model import Build_model
-from tensorflow.nn import softmax, log_softmax
+from tensorflow.nn import softmax
 from tensorflow.compat.v1.train import get_or_create_global_step
 from tensorflow.nn import softmax_cross_entropy_with_logits
 from tensorflow.keras.utils import Progbar
@@ -24,7 +24,7 @@ class Agent:
 		self.memory = Memory(self.memory_size)
 		self.epsilon = 1
 		self.epsilon_min = 0.01
-		self.epsilon_decay = 0.995
+		self.epsilon_decay = 0.95
 		self.gamma = 0.95
 		self.batch_size = 128
 		self.num_atoms = 51 # for C51
@@ -33,7 +33,7 @@ class Agent:
 		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
 		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
 		self.epoch_loss_avg = tf.keras.metrics.Mean()
-		self.epochs = 30
+		self.epochs = 100
 		self.bar = Progbar(self.epochs)
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
@@ -53,14 +53,13 @@ class Agent:
 
 	def _model(self, model_name):
 		ddqn = Build_model()
-		model = ddqn.build_model(self.state_size, self.neurons, self.action_size, self.num_atoms)
+		model = ddqn.build_model(self.state_size, self.neurons, self.action_size, self.num_atoms, self.training)
 		if os.path.exists(self.check_index):
 			#如果已經有訓練過，就接著load權重
 			print('-'*52+'{} Weights loaded!!'.format(model_name)+'-'*52)
 			model.load_weights(self.checkpoint_path)
 		else:
 			print('-'*53+'Create new model!!'+'-'*53)
-		
 		return model
 	
 	# 把model的權重傳給target model
@@ -86,16 +85,12 @@ class Agent:
 			max_p = self.memory.abs_err_upper  # clipped abs error feat 莫煩
 		self.memory.add(max_p, (state, action, reward, next_state, done))  # set the max p for new p
 
-	def _tensor_to_np(self, x, with_log=False):
+	def _tensor_to_np(self, x):
 		# a list of tensor [128x51,,,]
 		y = []
 		for i in range(self.action_size):
-			if not with_log:
-				x[i] = softmax(x[i])
-				y.append(x[i].numpy())
-			else:
-				x[i] = log_softmax(x[i])
-				y.append(x[i].numpy())
+			x[i] = softmax(x[i])
+			y.append(x[i].numpy())
 		return y
 
 	# loss function
@@ -123,10 +118,8 @@ class Agent:
 			reward.append(mini_batch[i][2])
 			next_states[i][:][:] = mini_batch[i][3]
 			done.append(mini_batch[i][4])
-
-		raw_p = self.model(state_inputs)  # Return a list of tensor [128x51,,,]
-		log_p = self._tensor_to_np(raw_p, with_log=True) # 計算cross entropy
-		p = self._tensor_to_np(raw_p)
+		
+		p = self._tensor_to_np(self.model(state_inputs))
 		new_p = p
 		p_next = self._tensor_to_np(self.model(next_states)) 
 		p_t_next = self._tensor_to_np(self.target_model(next_states))
@@ -152,9 +145,10 @@ class Agent:
 					m_prob[action[i]][i][int(m_u)] += p_t_next[optimal_action_idxs[i]][i][j] * (bj - m_l)
 			
 			new_p[action[i]][i][:] = m_prob[action[i]][i][:]	
-		
+
 		for i in range(self.batch_size):
-			error = abs(tf.reduce_sum(new_p[action[i]][i] * log_p[action[i]][i]))
+			error = softmax_cross_entropy_with_logits(labels=p[action[i]][i], logits=new_p[action[i]][i])
+			error = error.numpy()
 			error *= is_weights[i]
 			self.memory.update(idxs[i], error)
 
