@@ -1,61 +1,67 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Dense, Add, Subtract, Lambda, BatchNormalization, GRU
+from tensorflow.keras.layers import Input, Dense, Add, Subtract, Lambda, BatchNormalization, Conv1D, Flatten, MaxPooling1D, GlobalAveragePooling1D
 from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.activations import softmax
-from agent.noisynet import NoisyDense
+#from agent.noisynet import NoisyDense
 import tensorflow.keras.backend as K
 
 #Tensorflow 2.0 Beta
 
 class Build_model():
-    def build_model(self, state_size, neurons, action_size, atoms, training):
+    tf.keras.backend.set_floatx('float64')
+    def build_model(self, state_size, neurons, action_size, atoms):
         state_input = Input(shape=state_size)
-        # 前面的GRU層
-        gru1 = GRU(neurons, activation='elu',return_sequences=True)(state_input)
-        gru1_norm = BatchNormalization()(gru1)
-        gru2 = GRU(neurons, activation='elu',return_sequences=True)(gru1_norm)
-        gru2_norm = BatchNormalization()(gru2)
-        gru3 = GRU(neurons, activation='elu',return_sequences=True)(gru2_norm)
-        gru3_norm = BatchNormalization()(gru3)
-        gru4 = GRU(neurons, activation='elu',return_sequences=False)(gru3_norm)
-        gru4_norm = BatchNormalization()(gru4)
+        norm = BatchNormalization()(state_input)  # 輸入標準化
+        # 卷積層們
+        con1 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(norm)
+        con_norm1 = BatchNormalization()(con1)
+        con2 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(con_norm1)
+        con_norm2 = BatchNormalization()(con2)
+        pool_max = MaxPooling1D(pool_size=2)(con_norm2)
+        max_norm = BatchNormalization()(pool_max)
+        con3 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(max_norm)
+        con_norm3 = BatchNormalization()(con3)
+        con4 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(con_norm3)
+        con_norm4 = BatchNormalization()(con4)
+        pool_avg = GlobalAveragePooling1D()(con_norm4)
+        avg_norm = BatchNormalization()(pool_avg)
+        flat = Flatten()(avg_norm)
+        flat_norm = BatchNormalization()(flat)
         # 連結層
-        d1 = Dense(neurons, activation='elu')(gru4_norm)
-        d1_norm = BatchNormalization()(d1)
+        n1 = Dense(neurons, activation='elu')(flat_norm)
+        n1_norm = BatchNormalization()(n1)
         # 開始 distribution
-        noisy_distribution_list_a = []
-        noisy_distribution_list_v = []
-        noisy_norm_list_a = []
-        noisy_norm_list_v = [] 
+        distribution_list_a = []
+        distribution_list_v = []
+        norm_list_a = []
+        norm_list_v = [] 
         duel_distribution_list_a = []
         duel_norm_list_a = []
         advantage_list=[]
         output_list=[]
         # 建立一堆 Noisy 層 with elu activations
         for i in range(action_size):
-            noisy_distribution_list_a.append(
-                NoisyDense(atoms, neurons, activation='elu', Noisy=training, bias=False)(d1_norm)
+            distribution_list_a.append(
+                Dense(atoms, activation='elu')(n1_norm)
                 )
-            noisy_norm_list_a.append(
-                BatchNormalization()(noisy_distribution_list_a[i])
+            norm_list_a.append(
+                BatchNormalization()(distribution_list_a[i])
             )
-            noisy_distribution_list_v.append(
-                NoisyDense(atoms, neurons, activation='elu', Noisy=training, bias=False)(d1_norm)
+            distribution_list_v.append(
+                Dense(atoms, activation='elu')(n1_norm)
                 )
-            noisy_norm_list_v.append(
-                BatchNormalization()(noisy_distribution_list_v[i])
+            norm_list_v.append(
+                BatchNormalization()(distribution_list_v[i])
             )
             duel_distribution_list_a.append(
-                NoisyDense(atoms, atoms, activation='elu', Noisy=training, bias=True)(noisy_norm_list_a[i])
+                Dense(atoms, activation='elu')(norm_list_a[i])
                 )
             duel_norm_list_a.append(
-                BatchNormalization()(noisy_distribution_list_v[i])
+                BatchNormalization()(duel_distribution_list_a[i])
             )
         # deuling 計算 value     
-        value_in = tf.concat([t for t in noisy_norm_list_v], 1)
-        value = NoisyDense(atoms, atoms * action_size, activation='elu', Noisy=training, bias=True)(value_in)
+        value_in = tf.concat([t for t in norm_list_v], 1)
+        value = Dense(atoms, activation='elu')(value_in)
         value_norm = BatchNormalization()(value)
         # Output shape is (None, atoms) 
 
@@ -68,12 +74,13 @@ class Build_model():
                 Subtract()([duel_norm_list_a[i], a_mean])
                 )
             output_list.append(
-            softmax(Add()([value_norm, advantage_list[i]]))
+                Add()([value_norm, advantage_list[i]])
                 )
-
-        # 最後compile
-        model = Model(inputs=state_input, outputs=output_list)
-        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001, clipnorm=0.001))
         
-        return model
-    
+        return Model(inputs=state_input, outputs=output_list)
+        # softmax 在外面加上
+
+if __name__=='__main__':
+    m = Build_model()
+    model = m.build_model((20,7),60,4,51)
+    model.summary()
