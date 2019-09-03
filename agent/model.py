@@ -28,9 +28,9 @@ class Build_model():
         con_norm4 = BatchNormalization()(con4)
         pool_avg = GlobalAveragePooling1D()(con_norm4)
         avg_norm = BatchNormalization()(pool_avg)
-        flat = Flatten()(pool_avg)
+        flat = Flatten()(avg_norm)
         flat_norm = BatchNormalization()(flat)
-        
+
         d2 = Dense(neurons, activation='elu')(flat_norm)
         d2_norm = BatchNormalization()(d2)
         d3_a = Dense(neurons, activation='elu')(d2_norm)
