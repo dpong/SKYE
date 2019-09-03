@@ -19,13 +19,15 @@ class Build_model():
         con_norm2 = BatchNormalization()(con2)
         pool_max = MaxPooling1D(pool_size=2)(con_norm2)
         max_norm = BatchNormalization()(pool_max)
+        '''
         con3 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(max_norm)
         con_norm3 = BatchNormalization()(con3)
         con4 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(con_norm3)
         con_norm4 = BatchNormalization()(con4)
         pool_avg = GlobalAveragePooling1D()(con_norm4)
         avg_norm = BatchNormalization()(pool_avg)
-        flat = Flatten()(avg_norm)
+        '''
+        flat = Flatten()(max_norm)
         flat_norm = BatchNormalization()(flat)
         # 連結層
         n1 = Dense(neurons, activation='elu')(flat_norm)

@@ -107,7 +107,7 @@ for e in range(1, episode_count + 1):
 			+ " | Total Reward: " + str(round(trading.total_reward,2)))
 			print("-"*124)
 
-			if self_log:
+			if self_log == True:
 				# 寫一份到txt檔
 				log = open('train_result.txt','a')
 				log.write("Episode " + str(e) + "/" + str(episode_count)
