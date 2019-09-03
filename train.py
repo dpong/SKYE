@@ -15,7 +15,7 @@ init_cash = 1000000
 #c_path = "models/{}/training.ckpt".format(ticker)
 m_path = "models/{}/model_weights".format(ticker)
 #是否紀錄
-self_log = None
+self_log = False
 #取得歷史資料
 start = '2018-1-1'
 end = '2019-1-1'
@@ -69,10 +69,10 @@ for e in range(1, episode_count + 1):
 		train_count += 1
 		# 動作一定次數才會訓練
 		if train_count > agent.batch_size:
-			for i in range(5):
-				agent.train_model()
+			
+			agent.train_model()
 			agent.model.save_weights(agent.checkpoint_path, save_format='tf')
-			agent.clear_sess()
+
 			train_count = 0
 			target_update +=1
 

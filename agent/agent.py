@@ -7,7 +7,7 @@ from agent.prioritized_memory import Memory
 from agent.model import Build_model
 from tensorflow.nn import softmax, log_softmax
 from tensorflow.compat.v1.train import get_or_create_global_step
-from tensorflow.compat.v1.losses import mean_squared_error
+from tensorflow.compat.v1.losses import huber_loss
 
 config = tf.compat.v1.ConfigProto()
 config.intra_op_parallelism_threads = 44
@@ -21,6 +21,9 @@ class Agent:
 		self.neurons = neurons
 		self.memory_size = 10000 #記憶長度
 		self.memory = Memory(self.memory_size)
+		self.epsilon = 1
+		self.epsilon_min = 0.01
+		self.epsilon_decay = 0.995
 		self.gamma = 0.95
 		self.batch_size = 128
 		self.is_eval = is_eval
@@ -34,7 +37,7 @@ class Agent:
 		else:
 			self.model = self._model('  Model')
 
-		self.optimizer = tf.optimizers.Adam(learning_rate=0.01)
+		self.optimizer = tf.optimizers.Adam(learning_rate=0.0001)
 		
 	def _model(self, model_name):
 		ddqn = Build_model()
@@ -45,29 +48,30 @@ class Agent:
 			model.load_weights(self.checkpoint_path)
 		else:
 			print('-'*53+'Create new model!!'+'-'*53)
-
+		'''
 		if self.is_eval:
 			model.get_layer('Noisy_1').remove_noise()
 			model.get_layer('Noisy_2').remove_noise()
 			model.get_layer('Noisy_3').remove_noise()
-
+		'''
 		return model
 	
 	def _loss(self, model, x, y):
 		y_ = self.model(x)
-		return mean_squared_error(y, y_) 
+		return huber_loss(y, y_)
 	
 	def _grad(self, model, inputs, targets):
 		with tf.GradientTape() as tape:
 			loss_value = self._loss(self.model, inputs, targets)
-		
-		return tape.gradient(loss_value, self.model.trainable_variables)
+		return loss_value, tape.gradient(loss_value, self.model.trainable_variables)
 	
 	# 把model的權重傳給target model
 	def update_target_model(self):
 		self.target_model.set_weights(self.model.get_weights())
 
 	def act(self, state):
+		if not self.is_eval and np.random.rand() <= self.epsilon:
+			return random.randrange(self.action_size)
 		options = self.model(state)
 		options = options.numpy()
 		return np.argmax(options[0]) # array裡面最大值的位置號
@@ -117,13 +121,18 @@ class Agent:
 			self.memory.update(idxs[i], error)
 
 		#train model
-		grads = self._grad(self.model, state_inputs, result)
-		self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables),
-			get_or_create_global_step())
-
-	def clear_sess(self):
-		K.clear_session()
+		epoch_loss_avg = tf.keras.metrics.Mean()
+		for i in range(self.batch_size):
+			loss_value, grads = self._grad(self.model, state_inputs, result)
+			self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables),
+				get_or_create_global_step())
+			epoch_loss_avg(loss_value)
+			print(i,epoch_loss_avg.result())
 		
+		if self.epsilon > self.epsilon_min:
+			#貪婪度遞減   
+			self.epsilon *= self.epsilon_decay 
+
 
 
 	
