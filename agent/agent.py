@@ -96,7 +96,7 @@ class Agent:
 	# loss function
 	def _loss(self, model, x, y):
 		y_ = self.model(x)
-		return softmax_cross_entropy_with_logits(labels=y, logits=y_)
+		return tf.reduce_sum(softmax_cross_entropy_with_logits(labels=y, logits=y_))
 	# gradient
 	def _grad(self, model, inputs, targets):
 		with tf.GradientTape() as tape:
@@ -144,9 +144,8 @@ class Agent:
 					m_l, m_u = math.floor(bj), math.ceil(bj)
 					m_prob[action[i]][i][int(m_l)] += p_t_next[optimal_action_idxs[i]][i][j] * (m_u - bj)
 					m_prob[action[i]][i][int(m_u)] += p_t_next[optimal_action_idxs[i]][i][j] * (bj - m_l)
-			
+			# 更新輸出的機率分佈
 			new_p[action[i]][i][:] = m_prob[action[i]][i][:]	
-
 		for i in range(self.batch_size):
 			error = -np.sum(p[action[i]][i] * np.log(new_p[action[i]][i]+1e-9))
 			error *= is_weights[i]
