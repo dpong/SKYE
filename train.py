@@ -63,6 +63,9 @@ for e in range(1, episode_count + 1):
 			trading.max_con_lose = trading.con_lose
 
 		done = True if t == l - 1 else False
+		# 整局都沒獲利的話給懲罰
+		if done == True and trading.total_profit == 0:
+			trading.reward += -0.5
 	
 		agent.append_sample(state, traded_action, trading.reward, next_state, done)
 		# 紀錄存入多少記憶	

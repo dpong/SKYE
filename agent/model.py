@@ -17,32 +17,24 @@ class Build_model():
         norm = BatchNormalization()(state_input)  # 輸入標準化
         # 卷積層們
         con1 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(norm)
-        con_norm1 = BatchNormalization()(con1)
-        con2 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(con_norm1)
-        con_norm2 = BatchNormalization()(con2)
-        pool_max = MaxPooling1D(pool_size=2)(con_norm2)
-        max_norm = BatchNormalization()(pool_max)
-        con3 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(max_norm)
-        con_norm3 = BatchNormalization()(con3)
-        con4 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(con_norm3)
-        con_norm4 = BatchNormalization()(con4)
-        pool_avg = GlobalAveragePooling1D()(con_norm4)
-        avg_norm = BatchNormalization()(pool_avg)
-        flat = Flatten()(avg_norm)
-        flat_norm = BatchNormalization()(flat)
+        con2 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(con1)
+        pool_max = MaxPooling1D(pool_size=2)(con2)
+        con3 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(pool_max)
+        con4 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(con3)
+        pool_avg = GlobalAveragePooling1D()(con4)
+        flat = Flatten()(pool_avg)
+        
         # 連結層
-        n1 = Dense(neurons, activation='elu')(flat_norm)
-        n1_norm = BatchNormalization()(n1)
+        n1 = Dense(neurons, activation='elu')(flat)
+        
         # deuling advantage
-        n2_a = Dense(neurons, activation='elu')(n1_norm)
-        n2_a_norm = BatchNormalization()(n2_a)
-        a = Dense(action_size, activation='linear')(n2_a_norm)
+        n2_a = Dense(neurons, activation='elu')(n1)
+        a = Dense(action_size, activation='linear')(n2_a)
         a_mean = Lambda(lambda x: K.mean(x, axis=1, keepdims=True))(a)
         advantage = Subtract()([a, a_mean])
         # deuling value
-        n2_v = Dense(neurons, activation='elu')(n1_norm)
-        n2_v_norm = BatchNormalization()(n2_v)
-        value = Dense(1, activation='linear')(n2_v_norm)
+        n2_v = Dense(neurons, activation='elu')(n1)
+        value = Dense(1, activation='linear')(n2_v)
         # combine
         q = Add()([value, advantage])
 
