@@ -11,7 +11,9 @@ def formatPrice(n):
 
 # returns an n-day state representation ending at time t
 def getState(data, t, n):
-	return np.array([data[t-n:t,-2:]])  #修正input形狀
+	out = np.array([data[t-n:t,:-2]])  #修正input形狀
+	out.dtype = 'float64'
+	return out
 
 #model的輸入值起始
 def get_shape(data,window_size):

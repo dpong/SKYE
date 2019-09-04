@@ -1,5 +1,6 @@
 from functions import *
 from profolio import *
+import numpy as np
 
 class Trading():
     def __init__(self,init_cash):
@@ -307,7 +308,9 @@ class Trading():
             holding = [0,1,0]  # 空手
             account = [0,0,0]  # 持平
         
-        return cash + holding + account
+        out = np.array([cash + holding + account])
+        out.dtype = 'float64'
+        return out
         
         
         

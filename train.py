@@ -54,8 +54,8 @@ for e in range(1, episode_count + 1):
 		next_state = getState(data, t + step_n, window_size) 
 
 		self_state = trading.self_states(data[t+1, n_close])
-
-		action = agent.act(state)
+		
+		action = agent.act(state, self_state)
 
 		trading.reward = 0
 		#這邊交易的價格用當日的收盤價(t+1)代替，實際交易就是成交價格
@@ -69,7 +69,7 @@ for e in range(1, episode_count + 1):
 		# 整局都沒獲利的話給懲罰
 		if done == True and trading.total_profit <= 0:
 			trading.reward += -0.5
-		agent.append_sample(state, action, trading.reward, next_state, done)
+		agent.append_sample([state, self_state], action, trading.reward, [next_state, self_state], done)
 		# 紀錄存入多少記憶	
 		train_count += 1
 		# 動作一定次數才會訓練，然後存權重
