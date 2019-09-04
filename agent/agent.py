@@ -24,16 +24,16 @@ class Agent:
 		self.memory = Memory(self.memory_size)
 		self.epsilon = 1
 		self.epsilon_min = 0.01
-		self.epsilon_decay = 0.95
+		self.epsilon_decay = 0.995
 		self.gamma = 0.95
 		self.batch_size = 128
 		self.num_atoms = 51 # for C51
-		self.v_max = 1.5
-		self.v_min = -1.5 
+		self.v_max = 10
+		self.v_min = -10 
 		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
 		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
 		self.epoch_loss_avg = tf.keras.metrics.Mean()
-		self.epochs = 256
+		self.epochs = 100
 		self.bar = Progbar(self.epochs)
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
@@ -48,7 +48,7 @@ class Agent:
 			self.training = False
 			self.model = self._model('  Model')
 			
-		self.optimizer = tf.optimizers.Adam(learning_rate=0.001)
+		self.optimizer = tf.optimizers.Adam(learning_rate=0.00025, epsilon = 0.0003125)
 
 
 	def _model(self, model_name):
@@ -96,7 +96,7 @@ class Agent:
 	# loss function
 	def _loss(self, model, x, y):
 		y_ = self.model(x)
-		return tf.reduce_sum(softmax_cross_entropy_with_logits(labels=y, logits=y_))
+		return tf.reduce_mean(softmax_cross_entropy_with_logits(labels=y, logits=y_))
 	# gradient
 	def _grad(self, model, inputs, targets):
 		with tf.GradientTape() as tape:
@@ -158,7 +158,7 @@ class Agent:
 				get_or_create_global_step())
 			self.epoch_loss_avg(loss_value)
 			self.bar.update(i, values=[('loss', self.epoch_loss_avg.result().numpy())])
-
+		print('\n')
 		if self.epsilon > self.epsilon_min:
 			#貪婪度遞減   
 			self.epsilon *= self.epsilon_decay 

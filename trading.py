@@ -20,6 +20,7 @@ class Trading():
         self.lose_count = 0
         self.con_lose = 0
         self.max_con_lose = 0
+        self.print_log = False
 
     def policy(self, action, close, e, episode_count, t, l):
         self.profolio.total_value(close, self.cash, self.inventory, self.commission)
@@ -90,9 +91,10 @@ class Trading():
                 elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
                     self.reward = account_profit / price_value
                 total_units = get_inventory_units(self.inventory)
-                print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
-				+ " | Bull: "+ str(total_units) + ' | Potential: ' + formatPrice(account_profit)
-				+ " | Reward: " + str(round(self.reward,2)))	
+                if self.print_log == True:
+                    print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
+                    + " | Bull: "+ str(total_units) + ' | Potential: ' + formatPrice(account_profit)
+                    + " | Reward: " + str(round(self.reward,2)))	
                 self.highest_value[1] = 0
             else:
                 account_profit, price_value, close_value = get_short_account(self.inventory,close,self.commission)
@@ -104,13 +106,15 @@ class Trading():
                 elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
                     self.reward = account_profit / price_value
                 total_units = get_inventory_units(self.inventory)
-                print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
-				+ " | Bear: "+ str(total_units) + ' | Potential: ' + formatPrice(account_profit)
-				+ " | Reward: " + str(round(self.reward,2)))
+                if self.print_log == True:
+                    print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
+                    + " | Bear: "+ str(total_units) + ' | Potential: ' + formatPrice(account_profit)
+                    + " | Reward: " + str(round(self.reward,2)))
                 self.highest_value[0] = 0
         if len(self.inventory) == 0:
-            print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
-		    + " | Nuetrual")
+            if self.print_log == True:
+                print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
+                + " | Nuetrual")
             self.highest_value[:] = 0
     
     #用買進動作平倉
@@ -128,10 +132,11 @@ class Trading():
         self.reward = self.pr_ratio * profit / (sold_price[0] * sold_price[2])
         self.cash += profit + sold_price[0] * sold_price[2]
         total_units = get_inventory_units(self.inventory)
-        print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
-		+ " | Bear: "+ str(total_units) +" | Long: " + formatPrice(price) 
-		+ " | Profit: " + formatPrice(profit)+ " | Total Profit: " + formatPrice(self.total_profit)
-		+ " | Reward: " + str(round(self.reward,2)))
+        if self.print_log == True:
+            print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
+            + " | Bear: "+ str(total_units) +" | Long: " + formatPrice(price) 
+            + " | Profit: " + formatPrice(profit)+ " | Total Profit: " + formatPrice(self.total_profit)
+            + " | Reward: " + str(round(self.reward,2)))
             
     def _long_new(self, close, e, episode_count, t, l):
         account_profit, price_value, close_value = get_long_account(self.inventory,close,self.commission)
@@ -149,10 +154,11 @@ class Trading():
         self.cash -= cost
         self.inventory.append([close, price, unit, 'long']) #存入進場資訊
         total_units = get_inventory_units(self.inventory)
-        print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
-		+ " | Bull: "+ str(total_units) + " | Long : " + formatPrice(price)
-        + ' | Potential: ' + formatPrice(account_profit)
-		+ " | Reward: " + str(round(self.reward,2)))
+        if self.print_log == True:
+            print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
+            + " | Bull: "+ str(total_units) + " | Long : " + formatPrice(price)
+            + ' | Potential: ' + formatPrice(account_profit)
+            + " | Reward: " + str(round(self.reward,2)))
 
     def _long_new_empty(self, close, e, episode_count, t, l):
         price = close * (1+self.commission)
@@ -161,8 +167,9 @@ class Trading():
         cost = close * unit
         self.cash -= cost
         self.inventory.append([close, price, unit, 'long']) #存入進場資訊
-        print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
-		+ " | Bull: "+ str(unit) + " | Long : " + formatPrice(price))
+        if self.print_log == True:
+            print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
+            + " | Bull: "+ str(unit) + " | Long : " + formatPrice(price))
 
     #用賣出的動作來平倉
     def _short_clean(self, close, e, episode_count, t, l):
@@ -179,10 +186,11 @@ class Trading():
         self.reward = self.pr_ratio * profit / (bought_price[0] * bought_price[2])
         self.cash += profit + bought_price[0] * bought_price[2]
         total_units = get_inventory_units(self.inventory)
-        print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
-		+ " | Bull: "+ str(total_units) +" | Short: " + formatPrice(price) 
-		+ " | Profit: " + formatPrice(profit)+ " | Total Profit: " + formatPrice(self.total_profit)
-		+ " | Reward: " + str(round(self.reward,2)))
+        if self.print_log == True:
+            print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
+            + " | Bull: "+ str(total_units) +" | Short: " + formatPrice(price) 
+            + " | Profit: " + formatPrice(profit)+ " | Total Profit: " + formatPrice(self.total_profit)
+            + " | Reward: " + str(round(self.reward,2)))
 
     def _short_new(self, close, e, episode_count, t, l):
         account_profit, price_value, close_value = get_short_account(self.inventory,close,self.commission)
@@ -200,10 +208,11 @@ class Trading():
         self.cash -= cost
         self.inventory.append([close, price, unit, 'short']) #存入進場資訊
         total_units = get_inventory_units(self.inventory)
-        print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
-		+ " | Bear: "+ str(total_units) + " | Short : " + formatPrice(price)
-        + ' | Potential: ' + formatPrice(account_profit)
-		+ " | Reward: " + str(round(self.reward,2)))
+        if self.print_log == True:
+            print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
+            + " | Bear: "+ str(total_units) + " | Short : " + formatPrice(price)
+            + ' | Potential: ' + formatPrice(account_profit)
+            + " | Reward: " + str(round(self.reward,2)))
     
     def _short_new_empty(self, close, e, episode_count, t, l):
         price = close * (1 - self.commission)
@@ -213,8 +222,9 @@ class Trading():
         self.cash -= cost
         self.inventory.append([close, price, unit,'short']) #存入進場資訊
         total_units = get_inventory_units(self.inventory)
-        print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
-		+ " | Bear: "+ str(total_units) + " | Short : " + formatPrice(price))
+        if self.print_log == True:
+            print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
+            + " | Bear: "+ str(total_units) + " | Short : " + formatPrice(price))
     
     #全部平倉
     def _clean_inventory(self, close, e, episode_count, t, l): 
@@ -229,10 +239,11 @@ class Trading():
             self.reward = self.pr_ratio * (profit / price_value)
             self.total_profit += profit
             self.cash += close_value + profit
-            print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
-				+ " | Clean Inventory"+ ' | Profit: ' + formatPrice(profit)
-				+ " | Total Profit: " + formatPrice(self.total_profit)
-				+ " | Reward: " + str(round(self.reward,2)))
+            if self.print_log == True:
+                print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
+                    + " | Clean Inventory"+ ' | Profit: ' + formatPrice(profit)
+                    + " | Total Profit: " + formatPrice(self.total_profit)
+                    + " | Reward: " + str(round(self.reward,2)))
         elif self.inventory[0][-1] == 'short':
             profit, price_value, close_value = get_short_account(self.inventory,close,self.commission)
             if profit > 0 :
@@ -244,10 +255,11 @@ class Trading():
             self.reward = self.pr_ratio * (profit / price_value)
             self.total_profit += profit
             self.cash += close_value + profit
-            print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
-				+ " | Clean Inventory"+ ' | Profit: ' + formatPrice(profit)
-				+ " | Total Profit: " + formatPrice(self.total_profit)
-				+ " | Reward: " + str(round(self.reward,2)))
+            if self.print_log == True:
+                print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
+                    + " | Clean Inventory"+ ' | Profit: ' + formatPrice(profit)
+                    + " | Total Profit: " + formatPrice(self.total_profit)
+                    + " | Reward: " + str(round(self.reward,2)))
         self.inventory = [] 
         self.highest_value[:] = 0
 				

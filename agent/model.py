@@ -4,6 +4,7 @@ from tensorflow.keras.layers import Input, Dense, Add, Subtract, Lambda, BatchNo
 from tensorflow.keras.models import Model
 from agent.noisynet import NoisyDense
 import tensorflow.keras.backend as K
+from tensorflow.nn import softmax
 
 #Tensorflow 2.0 Beta
 
@@ -13,42 +14,56 @@ class Build_model():
         state_input = Input(shape=state_size)
         norm = BatchNormalization()(state_input)  # 輸入標準化
         # 卷積層們
-        con1 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(norm)
-        con2 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(con1)
-        pool_max = MaxPooling1D(pool_size=2)(con2)
-        con3 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(pool_max)
-        con4 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(con3)
-        pool_avg = GlobalAveragePooling1D()(con4)
-    
-        flat = Flatten()(pool_avg)
+        con1 = Conv1D(neurons, state_size[1], padding="same", activation='relu')(norm)
+        con_norm1 = BatchNormalization()(con1)
+        con2 = Conv1D(neurons, state_size[1], padding="same", activation='relu')(con_norm1)
+        con_norm2 = BatchNormalization()(con2)
+        pool_max = MaxPooling1D(pool_size=2)(con_norm2)
+        max_norm = BatchNormalization()(pool_max)
+        con3 = Conv1D(neurons, state_size[1], padding="same", activation='relu')(max_norm)
+        con_norm3 = BatchNormalization()(con3)
+        con4 = Conv1D(neurons, state_size[1], padding="same", activation='relu')(con_norm3)
+        con_norm4 = BatchNormalization()(con4)
+        pool_avg = GlobalAveragePooling1D()(con_norm4)
+        avg_norm = BatchNormalization()(pool_avg)
+        flat = Flatten()(avg_norm)
         # 連結層
-        n1 = Dense(neurons, activation='elu')(pool_avg)
-        
+        n1 = Dense(neurons, activation='elu')(flat)
+        n1_norm = BatchNormalization()(n1)
         # 開始 distribution
-        distribution_list_a = []
-        distribution_list_v = []
+        #distribution_list_a = []
+        #distribution_list_v = []
         #norm_list_a = []
         #norm_list_v = [] 
-        duel_distribution_list_a = []
+        #duel_distribution_list_a = []
         #duel_norm_list_a = []
-        advantage_list=[]
+        #advantage_list=[]
         output_list=[]
+        for i in range(action_size):
+            output_list.append(
+                NoisyDense(atoms, neurons, activation='linear', Noisy=training)(n1_norm)
+                )
+
+        return Model(inputs=state_input, outputs=output_list)
+
+
+        '''
         # 建立一堆 Noisy 層 with elu activations
         for i in range(action_size):
             distribution_list_a.append(
-                NoisyDense(atoms, neurons, activation='elu', Noisy=training)(n1)
+                Dense(atoms, neurons, activation='relu')(n1)
                 )
             #norm_list_a.append(
             #    BatchNormalization()(distribution_list_a[i])
             #)
             distribution_list_v.append(
-                NoisyDense(atoms, neurons, activation='elu', Noisy=training)(n1)
+                Dense(atoms, neurons, activation='relu')(n1)
                 )
             #norm_list_v.append(
             #    BatchNormalization()(distribution_list_v[i])
             #)
             duel_distribution_list_a.append(
-                NoisyDense(atoms, atoms, activation='linear', Noisy=training)(distribution_list_a[i])
+                Dense(atoms, atoms, activation='linear')(distribution_list_a[i])
                 )
             #duel_norm_list_a.append(
             #    BatchNormalization()(duel_distribution_list_a[i])
@@ -70,8 +85,4 @@ class Build_model():
             output_list.append(
                 Add()([value, advantage_list[i]])
                 )
-        
-        return Model(inputs=state_input, outputs=output_list)
-        # softmax 在外面加上
-
-
+        '''

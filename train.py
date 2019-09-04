@@ -23,6 +23,7 @@ df = get_data(ticker, start, end)
 #df_ben = get_data('SPY', start, end)
 #起始各個class
 trading = Trading(init_cash)
+trading.print_log = False
 profolio = Profolio(init_cash)
 #資料整合轉換
 data = init_data(df, init_cash)
@@ -63,8 +64,10 @@ for e in range(1, episode_count + 1):
 			trading.max_con_lose = trading.con_lose
 
 		done = True if t == l - 1 else False
-	
-		agent.append_sample(state, traded_action, trading.reward, next_state, done)
+		# 整局都沒獲利的話給懲罰
+		if done == True and trading.total_profit <= 0:
+			trading.reward += -0.5
+		agent.append_sample(state, action, trading.reward, next_state, done)
 		# 紀錄存入多少記憶	
 		train_count += 1
 		# 動作一定次數才會訓練，然後存權重

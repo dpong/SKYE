@@ -17,6 +17,7 @@ df = get_data(ticker, start, end)
 #df_ben = get_data('SPY', start, end)
 #起始各個class
 trading = Trading(init_cash)
+trading.print_log = True
 profolio = Profolio(init_cash)
 #資料整合轉換
 data = init_data(df, init_cash)
