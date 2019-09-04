@@ -19,15 +19,14 @@ class Build_model():
         con_norm2 = BatchNormalization()(con2)
         pool_max = MaxPooling1D(pool_size=2)(con_norm2)
         max_norm = BatchNormalization()(pool_max)
-        '''
         con3 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(max_norm)
         con_norm3 = BatchNormalization()(con3)
         con4 = Conv1D(neurons, state_size[1], padding="causal", activation='relu')(con_norm3)
         con_norm4 = BatchNormalization()(con4)
         pool_avg = GlobalAveragePooling1D()(con_norm4)
         avg_norm = BatchNormalization()(pool_avg)
-        '''
-        flat = Flatten()(max_norm)
+    
+        flat = Flatten()(avg_norm)
         flat_norm = BatchNormalization()(flat)
         # 連結層
         n1 = Dense(neurons, activation='elu')(flat_norm)
@@ -56,14 +55,14 @@ class Build_model():
                 BatchNormalization()(distribution_list_v[i])
             )
             duel_distribution_list_a.append(
-                NoisyDense(atoms, atoms, activation='elu', Noisy=training)(norm_list_a[i])
+                NoisyDense(atoms, atoms, activation='linear', Noisy=training)(norm_list_a[i])
                 )
             duel_norm_list_a.append(
                 BatchNormalization()(duel_distribution_list_a[i])
             )
         # deuling 計算 value     
         value_in = tf.concat([t for t in norm_list_v], 1)
-        value = Dense(atoms, activation='elu')(value_in)
+        value = Dense(atoms, activation='linear')(value_in)
         value_norm = BatchNormalization()(value)
         # Output shape is (None, atoms) 
 

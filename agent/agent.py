@@ -119,6 +119,7 @@ class Agent:
 			next_states[i][:][:] = mini_batch[i][3]
 			done.append(mini_batch[i][4])
 		
+		# 取softmax跟換成np
 		p = self._tensor_to_np(self.model(state_inputs))
 		new_p = p
 		p_next = self._tensor_to_np(self.model(next_states)) 
@@ -147,8 +148,7 @@ class Agent:
 			new_p[action[i]][i][:] = m_prob[action[i]][i][:]	
 
 		for i in range(self.batch_size):
-			error = softmax_cross_entropy_with_logits(labels=p[action[i]][i], logits=new_p[action[i]][i])
-			error = error.numpy()
+			error = -np.sum(p[action[i]][i] * np.log(new_p[action[i]][i]+1e-9))
 			error *= is_weights[i]
 			self.memory.update(idxs[i], error)
 
