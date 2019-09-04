@@ -53,6 +53,8 @@ for e in range(1, episode_count + 1):
 		state = getState(data, t, window_size)
 		next_state = getState(data, t + step_n, window_size) 
 
+		self_state = trading.self_states(data[t+1, n_close])
+
 		action = agent.act(state)
 
 		trading.reward = 0

@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Add, Subtract, Lambda, BatchNormalization, Conv1D, Flatten, MaxPooling1D, GlobalAveragePooling1D
 from tensorflow.keras.models import Model
-from agent.noisynet import NoisyDense
+#from agent.noisynet import NoisyDense
 import tensorflow.keras.backend as K
 from tensorflow.nn import softmax
 
@@ -18,18 +18,11 @@ class Build_model():
         con_norm1 = BatchNormalization()(con1)
         con2 = Conv1D(neurons, state_size[1], padding="same", activation='relu')(con_norm1)
         con_norm2 = BatchNormalization()(con2)
-        pool_max = MaxPooling1D(pool_size=2)(con_norm2)
-        max_norm = BatchNormalization()(pool_max)
-        con3 = Conv1D(neurons, state_size[1], padding="same", activation='relu')(max_norm)
+        con3 = Conv1D(neurons, state_size[1], padding="same", activation='relu')(con_norm2)
         con_norm3 = BatchNormalization()(con3)
         con4 = Conv1D(neurons, state_size[1], padding="same", activation='relu')(con_norm3)
         con_norm4 = BatchNormalization()(con4)
-        pool_avg = GlobalAveragePooling1D()(con_norm4)
-        avg_norm = BatchNormalization()(pool_avg)
-        flat = Flatten()(avg_norm)
-        # 連結層
-        n1 = Dense(neurons, activation='elu')(flat)
-        n1_norm = BatchNormalization()(n1)
+        flat = Flatten()(con_norm4)
         # 開始 distribution
         #distribution_list_a = []
         #distribution_list_v = []
@@ -41,7 +34,7 @@ class Build_model():
         output_list=[]
         for i in range(action_size):
             output_list.append(
-                NoisyDense(atoms, neurons, activation='linear', Noisy=training)(n1_norm)
+                Dense(atoms, activation='linear')(flat)
                 )
 
         return Model(inputs=state_input, outputs=output_list)

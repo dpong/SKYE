@@ -262,6 +262,60 @@ class Trading():
                     + " | Reward: " + str(round(self.reward,2)))
         self.inventory = [] 
         self.highest_value[:] = 0
+
+    def self_states(self, close):
+        unit = get_unit(close, self.profolio.profolio_value)
+        if self.safe_margin * self.cash > close * unit:   # 判斷現金
+            cash = [1,0]  # 足夠現金
+        elif self.safe_margin * self.cash < close * unit:
+            cash = [0,1]  # 不夠現金
+
+        if len(self.inventory) > 0 :  # 持倉
+            if self.inventory[0][-1]=='long':
+                holding = [1,0,0]  # 多單
+                account_profit, price_value, close_value = get_long_account(self.inventory,close,self.commission)
+                if account_profit > 0:
+                    if account_profit / price_value > self.stop_pct:
+                        account = [1,0,1]  # 大幅獲利
+                    else:
+                        account = [1,0,0]  # 獲利
+                elif account_profit < 0:
+                    if account_profit / price_value < -self.stop_pct:
+                        account = [0,1,1]  # 大幅虧損
+                    else:
+                        account = [0,1,0]  # 虧損
+                elif account_profit == 0:
+                    account = [0,0,0]  # 持平
+
+            elif self.inventory[0][-1]=='short':
+                holding = [0,0,1]  # 空單
+                account_profit, price_value, close_value = get_short_account(self.inventory,close,self.commission)
+                if account_profit > 0:
+                    if account_profit / price_value > self.stop_pct:
+                        account = [1,0,1]  # 大幅獲利
+                    else:
+                        account = [1,0,0]  # 獲利
+                elif account_profit < 0:
+                    if account_profit / price_value < -self.stop_pct:
+                        account = [0,1,1]  # 大幅虧損
+                    else:
+                        account = [0,1,0]  # 虧損
+                elif account_profit == 0:
+                    account = [0,0,0]  # 持平
+
+        else:
+            holding = [0,1,0]  # 空手
+            account = [0,0,0]  # 持平
+        
+        return cash + holding + account
+        
+        
+        
+        
+        
+        
+        
+        
 				
 
 		
