@@ -251,7 +251,7 @@ class Trading():
 
     def self_states(self, close):
         unit = get_unit(close, self.profolio.profolio_value)
-        if self.safe_margin * self.cash > close * unit:   # 判斷現金
+        if self.safe_margin * self.cash >= close * unit:   # 判斷現金
             cash = [1,0]  # 足夠現金
         elif self.safe_margin * self.cash < close * unit:
             cash = [0,1]  # 不夠現金
