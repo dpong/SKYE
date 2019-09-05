@@ -5,12 +5,12 @@ from tensorflow.keras.layers import Conv1D, Flatten, MaxPooling1D, GlobalAverage
 from tensorflow.keras.models import Model
 from agent.noisynet import NoisyDense
 import tensorflow.keras.backend as K
-from tensorflow.nn import softmax
+
 
 
 class Build_model():
     tf.keras.backend.set_floatx('float64')
-    def build_model(self, state_size, neurons, action_size, training):
+    def build_model(self, state_size, neurons, action_size, atoms, training):
         state_input = Input(shape=state_size, name='state_input', dtype='float64')
         norm = BatchNormalization()(state_input)  # 輸入標準化
         # 額外輸入
@@ -28,14 +28,30 @@ class Build_model():
         # 連結層
         n1 = Dense(neurons, activation='relu')(connect)
         n1_norm = BatchNormalization()(n1)
-        # deuling advantage
-        a = NoisyDense(action_size, activation='linear')(n1_norm)
-        a_mean = Lambda(lambda x: K.mean(x, axis=1, keepdims=True))(a)
-        advantage = Subtract()([a, a_mean])
-        # deuling value
-        value = NoisyDense(1, activation='linear')(n1_norm)
-        # combine
-        q = Add()([value, advantage])
+        # 開始 distribution
+        duel_distribution_list_a = []
+        advantage_list=[]
+        output_list=[]
+        # 建立一堆 Noisy 層 with elu activations
+        for i in range(action_size):
+            duel_distribution_list_a.append(
+                NoisyDense(atoms, activation='linear')(n1_norm)
+                )
+        # deuling 計算 value     
+        #value_in = tf.concat([t for t in norm_list_v], 1)
+        value = NoisyDense(atoms, activation='elu')(n1_norm)
+
+        # dueling 計算 a 的 mean 值
+        a_mean = tf.reduce_mean(duel_distribution_list_a, 0)
+        
+        # (a - a_mean) + value 
+        for i in range(action_size): 
+            advantage_list.append(
+                Subtract()([duel_distribution_list_a[i], a_mean])
+                )
+            output_list.append(
+                Add()([value, advantage_list[i]])
+                )
 
 
-        return Model(inputs=[state_input, self_state_input], outputs=q)
+        return Model(inputs=[state_input, self_state_input], outputs=output_list)

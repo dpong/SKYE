@@ -8,6 +8,7 @@ from agent.model import Build_model
 from tensorflow.compat.v1.train import get_or_create_global_step
 from tensorflow.compat.v1.losses import huber_loss
 from tensorflow.keras.utils import Progbar
+from tensorflow.nn import softmax, softmax_cross_entropy_with_logits
 
 config = tf.compat.v1.ConfigProto()
 config.intra_op_parallelism_threads = 44
@@ -26,8 +27,13 @@ class Agent:
 		self.epsilon_decay = 0.995
 		self.gamma = 0.95
 		self.batch_size = 64
+		self.num_atoms = 51 # for C51
+		self.v_max = 5
+		self.v_min = -5 
+		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
+		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
 		self.epoch_loss_avg = tf.keras.metrics.Mean()
-		self.epochs = 5
+		self.epochs = 10
 		self.bar = Progbar(self.epochs)
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
@@ -47,7 +53,7 @@ class Agent:
 
 	def _model(self, model_name):
 		ddqn = Build_model()
-		model = ddqn.build_model(self.state_size, self.neurons, self.action_size, self.training)
+		model = ddqn.build_model(self.state_size, self.neurons, self.action_size, self.num_atoms, self.training)
 		if os.path.exists(self.check_index):
 			#如果已經有訓練過，就接著load權重
 			print('-'*52+'{} Weights loaded!!'.format(model_name)+'-'*52)
@@ -63,9 +69,11 @@ class Agent:
 	def act(self, state, self_state):
 		if not self.is_eval and np.random.rand() <= self.epsilon:
 			return random.randrange(self.action_size)
-		options = self.model([state, self_state])
-		options = options.numpy()
-		return np.argmax(options[0]) # array裡面最大值的位置號
+		p = self.model([state, self_state])
+		p_concat = np.vstack(p)
+		q = np.sum(np.multiply(p_concat, np.array(self.z)), axis=1) 
+		action_idx = np.argmax(q)
+		return action_idx
 
 	# Prioritized experience replay
 	# save sample (error,<s,a,r,s'>) to the replay memory
@@ -75,10 +83,18 @@ class Agent:
 			max_p = self.memory.abs_err_upper  # clipped abs error feat 莫煩
 		self.memory.add(max_p, (state, action, reward, next_state, done))  # set the max p for new p
 
+	def _tensor_to_np(self, x):
+		# a list of tensor [128x51,,,]
+		y = []
+		for i in range(self.action_size):
+				x[i] = softmax(x[i])
+				y.append(x[i].numpy())
+		return y
+
 	# loss function
 	def _loss(self, model, x, y):
 		y_ = self.model(x)
-		return huber_loss(y, y_)
+		return softmax_cross_entropy_with_logits(labels=y, logits=y_)
 	# gradient
 	def _grad(self, model, inputs, targets):
 		with tf.GradientTape() as tape:
@@ -91,6 +107,7 @@ class Agent:
 		state_inputs = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
 		next_states = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
 		self_state = np.zeros((self.batch_size,1,8))
+		m_prob = [np.zeros((self.batch_size, self.num_atoms)) for i in range(self.action_size)]
 		action, reward, done = [], [], []
 		
 		for i in range(self.batch_size):
@@ -100,30 +117,43 @@ class Agent:
 			reward.append(mini_batch[i][2])
 			next_states[i][:][:] = mini_batch[i][3][0]
 			done.append(mini_batch[i][4])
-		old = []
-		# 主model動作
-		result = self.model([state_inputs, self_state])
-		result = result.numpy()
-		next_result = self.model([next_states, self_state])
-		next_result = next_result.numpy()
-		next_action = np.argmax(next_result, axis=1)
-		# target model動作
-		t_next_result = self.target_model([next_states, self_state])
-		t_next_result = t_next_result.numpy()
-		# 更新Q值: Double DQN的概念
+
+		p = self._tensor_to_np(self.model([state_inputs, self_state]))
+		new_p = p
+		p_next = self._tensor_to_np(self.model([next_states, self_state])) 
+		p_t_next = self._tensor_to_np(self.target_model([next_states, self_state]))
+			
+		optimal_action_idxs = []
+		q = np.sum(np.multiply(np.vstack(p_next), np.array(self.z)), axis=1) # length (num_atoms x num_actions)
+		q = q.reshape((self.batch_size, self.action_size), order='F')
+		optimal_action_idxs = np.argmax(q, axis=1)
+
+
 		for i in range(self.batch_size):
-			old.append(result[i][action[i]])
-			result[i][action[i]] = reward[i]
-			if not done[i]:
-				result[i][action[i]] = result[i][action[i]] + self.gamma * t_next_result[i][next_action[i]]
-			# 計算error給PER
-			error = abs(old[i] - result[i][action[i]])
+			if done[i]: # Terminal State
+				Tz = min(self.v_max, max(self.v_min, reward[i]))
+				bj = (Tz - self.v_min) / self.delta_z 
+				m_l, m_u = math.floor(bj), math.ceil(bj)
+				m_prob[action[i]][i][int(m_l)] += (m_u - bj)
+				m_prob[action[i]][i][int(m_u)] += (bj - m_l)
+			else:
+				for j in range(self.num_atoms):
+					Tz = min(self.v_max, max(self.v_min, reward[i] + self.gamma * self.z[j]))
+					bj = (Tz - self.v_min) / self.delta_z
+					m_l, m_u = math.floor(bj), math.ceil(bj)
+					m_prob[action[i]][i][int(m_l)] += p_t_next[optimal_action_idxs[i]][i][j] * (m_u - bj)
+					m_prob[action[i]][i][int(m_u)] += p_t_next[optimal_action_idxs[i]][i][j] * (bj - m_l)
+			
+			new_p[action[i]][i][:] = m_prob[action[i]][i][:]	
+		
+		for i in range(self.batch_size):
+			error = abs(tf.reduce_sum(new_p[action[i]][i] * np.log(p[action[i]][i]+1e-9)))
 			error *= is_weights[i]
 			self.memory.update(idxs[i], error)
 
 		# train model
 		for i in range(self.epochs):
-			loss_value, grads = self._grad(self.model, [state_inputs,self_state], result)
+			loss_value, grads = self._grad(self.model, [state_inputs, self_state], new_p)
 			self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables),
 				get_or_create_global_step())
 			self.epoch_loss_avg(loss_value)
