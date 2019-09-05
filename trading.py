@@ -270,7 +270,6 @@ class Trading():
                         account = [0,1,1]  # 大幅虧損
                 elif account_profit == 0:
                     account = [0,0,0]  # 持平
-
             elif self.inventory[0][-1]=='short':
                 holding = [0,1]  # 空單
                 account_profit, price_value, close_value = get_short_account(self.inventory,close,self.commission)

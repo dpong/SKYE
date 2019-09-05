@@ -25,7 +25,7 @@ class Agent:
 		self.epsilon_min = 0.01
 		self.epsilon_decay = 0.995
 		self.gamma = 0.95
-		self.batch_size = 64
+		self.batch_size = 128
 		self.epoch_loss_avg = tf.keras.metrics.Mean()
 		self.epochs = 5
 		self.bar = Progbar(self.epochs)
