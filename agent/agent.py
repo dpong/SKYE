@@ -97,7 +97,7 @@ class Agent:
 		mini_batch, idxs, is_weights = self.memory.sample(self.batch_size)
 		state_inputs = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
 		next_states = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
-		self_state = np.zeros((self.batch_size,1,8))
+		self_state = np.zeros((self.batch_size,1,7))
 		action, reward, done = [], [], []
 		
 		for i in range(self.batch_size):
