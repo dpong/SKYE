@@ -5,29 +5,38 @@ import numpy as np
 
 # Noisy Network
 class NoisyDense(tf.keras.layers.Layer):
-    def __init__(self, units, in_shape, activation = None, Noisy = True, bias = True, **kwargs):  # 要加上**kwargs，主層在存取時才不會報錯
+    def __init__(self, units, activation = None, Noisy = True, bias = True, **kwargs):  # 要加上**kwargs，主層在存取時才不會報錯
+        if 'input_shape' not in kwargs and 'input_dim' in kwargs:
+            kwargs['input_shape'] = (kwargs.pop('input_dim'),)
         super(NoisyDense, self).__init__(**kwargs)
         self.units = units
         self.noisy = Noisy
+        self.bias = bias
         self.activation_function = tf.keras.layers.Activation(activation = activation)
         
+    def build(self, input_shape):
+        assert len(input_shape) >= 2
+        self.input_dim = input_shape[-1]
+
         # mu亂數，sigma常數0.1 
         mu_init = tf.keras.initializers.glorot_normal()
         sigma_init = tf.constant_initializer(value=0.1)
         # need Bias or not
-        mu_bias_init = mu_init if bias else tf.zeros_initializer()
-        sigma_bias_init = sigma_init if bias else tf.zeros_initializer()
+        mu_bias_init = mu_init if self.bias else tf.zeros_initializer()
+        sigma_bias_init = sigma_init if self.bias else tf.zeros_initializer()
 
         # mu + sigma * epsilon for weight
-        self.mu_w = tf.Variable(initial_value=mu_init(shape=(in_shape,units),
+        self.mu_w = tf.Variable(initial_value=mu_init(shape=(self.input_dim, self.units),
         dtype='float64'),trainable=True)
-        self.sigma_w = tf.Variable(initial_value=sigma_init(shape=(in_shape,units),
+        self.sigma_w = tf.Variable(initial_value=sigma_init(shape=(self.input_dim, self.units),
         dtype='float64'),trainable=True)
         # mu + sigma * epsilon for bias
-        self.mu_bias = tf.Variable(initial_value=mu_bias_init(shape=(units,),
+        self.mu_bias = tf.Variable(initial_value=mu_bias_init(shape=(self.units,),
         dtype='float64'),trainable=True)
-        self.sigma_bias = tf.Variable(initial_value=sigma_bias_init(shape=(units,),
+        self.sigma_bias = tf.Variable(initial_value=sigma_bias_init(shape=(self.units,),
         dtype='float64'),trainable=True)
+
+        super(NoisyDense, self).build(input_shape)
         
     def call(self, inputs):
         # Factor 式的 noisy

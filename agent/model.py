@@ -3,7 +3,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Add, Subtract, Lambda, BatchNormalization, concatenate
 from tensorflow.keras.layers import Conv1D, Flatten, MaxPooling1D, GlobalAveragePooling1D, Reshape
 from tensorflow.keras.models import Model
-#from agent.noisynet import NoisyDense
+from agent.noisynet import NoisyDense
 import tensorflow.keras.backend as K
 from tensorflow.nn import softmax
 
@@ -19,23 +19,21 @@ class Build_model():
         s1 = Dense(8, activation='relu')(reshape_s)
         # 卷積層們，kernel_size為5天，一週的概念
         con1 = Conv1D(state_size[1], 5, padding='same', activation='relu')(norm)
-        con_norm1 = BatchNormalization()(con1)
-        con2 = Conv1D(state_size[1], 5, padding='same', activation='relu')(con_norm1)
-        con_norm2 = BatchNormalization()(con2)
-        con3 = Conv1D(state_size[1], 5, padding='same', activation='relu')(con_norm2)
-        con_norm3 = BatchNormalization()(con3)
-        flat = Flatten()(con_norm3)
+        con2 = Conv1D(state_size[1], 5, padding='same', activation='relu')(con1)
+        pool_max = MaxPooling1D(pool_size=5, strides=1, padding='same')(con2)
+        flat = Flatten()(pool_max)
+        flat_norm = BatchNormalization()(flat)
         # 外插 self_state_input
-        connect = concatenate([flat, s1])
+        connect = concatenate([flat_norm, s1])
         # 連結層
         n1 = Dense(neurons, activation='relu')(connect)
         n1_norm = BatchNormalization()(n1)
         # deuling advantage
-        a = Dense(action_size, activation='linear')(n1_norm)
+        a = NoisyDense(action_size, activation='linear')(n1_norm)
         a_mean = Lambda(lambda x: K.mean(x, axis=1, keepdims=True))(a)
         advantage = Subtract()([a, a_mean])
         # deuling value
-        value = Dense(1, activation='linear')(n1_norm)
+        value = NoisyDense(1, activation='linear')(n1_norm)
         # combine
         q = Add()([value, advantage])
 
