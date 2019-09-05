@@ -69,7 +69,7 @@ class Agent:
 	def act(self, state, self_state):
 		if not self.is_eval and np.random.rand() <= self.epsilon:
 			return random.randrange(self.action_size)
-		p = self.model([state, self_state])
+		p = self._tensor_to_np(self.model([state, self_state]))
 		p_concat = np.vstack(p)
 		q = np.sum(np.multiply(p_concat, np.array(self.z)), axis=1) 
 		action_idx = np.argmax(q)
