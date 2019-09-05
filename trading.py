@@ -87,8 +87,8 @@ class Trading():
                 value_diff = (account_profit - self.highest_value[0]) / price_value
                 if account_profit > self.highest_value[0]: 
                     self.highest_value[0] = account_profit
-                elif value_diff <= -self.stop_pct and self.highest_value[0] > 0:  #帳面獲利減少的懲罰
-                    self.reward = value_diff
+                #elif value_diff <= -self.stop_pct and self.highest_value[0] > 0:  #帳面獲利減少的懲罰
+                #    self.reward = value_diff
                 elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
                     self.reward = account_profit / price_value
                 total_units = get_inventory_units(self.inventory)
@@ -102,8 +102,8 @@ class Trading():
                 value_diff = (account_profit - self.highest_value[1]) / price_value
                 if account_profit > self.highest_value[1]: 
                     self.highest_value[1] = account_profit
-                elif value_diff <= -self.stop_pct and self.highest_value[1] > 0:  #帳面獲利減少的懲罰
-                    self.reward = value_diff
+                #elif value_diff <= -self.stop_pct and self.highest_value[1] > 0:  #帳面獲利減少的懲罰
+                #    self.reward = value_diff
                 elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
                     self.reward = account_profit / price_value
                 total_units = get_inventory_units(self.inventory)
@@ -144,8 +144,8 @@ class Trading():
         value_diff = (account_profit - self.highest_value[0]) / price_value
         if account_profit > self.highest_value[0]: 
             self.highest_value[0] = account_profit
-        elif value_diff <= -self.stop_pct and self.highest_value[0] > 0:  #帳面獲利減少的懲罰
-            self.reward = value_diff
+        #elif value_diff <= -self.stop_pct and self.highest_value[0] > 0:  #帳面獲利減少的懲罰
+        #    self.reward = value_diff
         elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
             self.reward = account_profit / price_value
         price = close * (1+self.commission)
@@ -198,8 +198,8 @@ class Trading():
         value_diff = (account_profit - self.highest_value[1]) / price_value
         if account_profit > self.highest_value[1]: 
             self.highest_value[1] = account_profit
-        elif value_diff <= -self.stop_pct and self.highest_value[1] > 0:  #帳面獲利減少的懲罰
-            self.reward = value_diff
+        #elif value_diff <= -self.stop_pct and self.highest_value[1] > 0:  #帳面獲利減少的懲罰
+        #    self.reward = value_diff
         elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
             self.reward = account_profit / price_value
         price = close * (1-self.commission)
