@@ -94,7 +94,7 @@ class Agent:
 	# loss function
 	def _loss(self, model, x, y):
 		y_ = self.model(x)
-		return softmax_cross_entropy_with_logits(labels=y, logits=y_)
+		return tf.reduce_sum(softmax_cross_entropy_with_logits(labels=y, logits=y_))
 	# gradient
 	def _grad(self, model, inputs, targets):
 		with tf.GradientTape() as tape:
