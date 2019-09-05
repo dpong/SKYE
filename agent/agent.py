@@ -27,7 +27,7 @@ class Agent:
 		self.gamma = 0.95
 		self.batch_size = 128
 		self.epoch_loss_avg = tf.keras.metrics.Mean()
-		self.epochs = 5
+		self.epochs = 10
 		self.bar = Progbar(self.epochs)
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
