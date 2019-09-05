@@ -3,19 +3,18 @@ import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Add, Subtract, Lambda, BatchNormalization, concatenate
 from tensorflow.keras.layers import Conv1D, Flatten, MaxPooling1D, GlobalAveragePooling1D, Reshape
 from tensorflow.keras.models import Model
-from agent.noisynet import NoisyDense
+from agent.noisydense import NoisyDense
 import tensorflow.keras.backend as K
-
 
 
 class Build_model():
     tf.keras.backend.set_floatx('float64')
-    def build_model(self, state_size, neurons, action_size, atoms, training):
+    def build_model(self, state_size, self_feat_shape, neurons, action_size, atoms):
         state_input = Input(shape=state_size, name='state_input', dtype='float64')
         norm = BatchNormalization()(state_input)  # 輸入標準化
         # 額外輸入
-        self_state_input = Input(shape=(7,), name='self_state_input', dtype='float64')
-        reshape_s = Reshape((7,))(self_state_input)
+        self_state_input = Input(shape=(self_feat_shape[-1],), name='self_state_input', dtype='float64')
+        reshape_s = Reshape((self_feat_shape[-1],))(self_state_input)
         s1 = Dense(8, activation='relu')(reshape_s)
         # 卷積層們，kernel_size為5天，一週的概念
         con1 = Conv1D(state_size[1], 5, padding='same', activation='relu')(norm)
@@ -26,7 +25,7 @@ class Build_model():
         # 外插 self_state_input
         connect = concatenate([flat_norm, s1])
         # 連結層
-        n1 = Dense(neurons, activation='relu')(connect)
+        n1 = NoisyDense(neurons, activation='relu', name='n1')(connect)
         n1_norm = BatchNormalization()(n1)
         # 開始 distribution
         duel_distribution_list_a = []
@@ -35,11 +34,11 @@ class Build_model():
         # 建立一堆 Noisy 層 with elu activations
         for i in range(action_size):
             duel_distribution_list_a.append(
-                NoisyDense(atoms, activation='linear')(n1_norm)
+                NoisyDense(atoms, activation='linear', name='a_{}'.format(i))(n1_norm)
                 )
         # deuling 計算 value     
         #value_in = tf.concat([t for t in norm_list_v], 1)
-        value = NoisyDense(atoms, activation='elu')(n1_norm)
+        value = NoisyDense(atoms, activation='elu', name='value')(n1_norm)
 
         # dueling 計算 a 的 mean 值
         a_mean = tf.reduce_mean(duel_distribution_list_a, 0)
@@ -52,6 +51,4 @@ class Build_model():
             output_list.append(
                 Add()([value, advantage_list[i]])
                 )
-
-
         return Model(inputs=[state_input, self_state_input], outputs=output_list)

@@ -26,11 +26,11 @@ profolio = Profolio(init_cash)
 #資料整合轉換
 data = init_data(df, init_cash)
 # n-step return
-step_n = 3
+step_n = 1
 #給agent初始化輸入的緯度
 input_shape, neurons = get_shape(data[:window_size], window_size)
-agent = Agent(ticker, input_shape, neurons, m_path, is_eval=False)
-
+self_state = trading.self_states(data[0,0])
+agent = Agent(ticker, input_shape, self_state.shape, neurons, m_path, is_eval=False)
 
 l = len(data) - step_n
 n_close = 0
@@ -64,9 +64,7 @@ for e in range(1, episode_count + 1):
 			trading.max_con_lose = trading.lose_count
 
 		done = True if t == l - 1 else False
-		# 整局都沒獲利的話給懲罰
-		if done == True and trading.total_profit <= 0:
-			trading.reward += -0.5
+		
 		agent.append_sample([state, self_state], action, trading.reward, [next_state, self_state], done)
 		# 更新總 reward
 		trading.total_reward += trading.reward

@@ -16,13 +16,14 @@ config.inter_op_parallelism_threads = 44
 tf.compat.v1.Session(config=config)
 
 class Agent:
-	def __init__(self, ticker, state_size, neurons, m_path, is_eval=False):
-		self.state_size = state_size # normalized previous days
+	def __init__(self, ticker, state_size, self_state_shape, neurons, m_path, is_eval=False):
+		self.state_size = state_size 
+		self.self_feat_shape = self_state_shape
 		self.action_size = 4 
 		self.neurons = neurons
 		self.memory_size = 10000 #記憶長度
 		self.memory = Memory(self.memory_size)
-		self.epsilon = 1
+		self.epsilon = 0.5
 		self.epsilon_min = 0.01
 		self.epsilon_decay = 0.995
 		self.gamma = 0.95
@@ -53,13 +54,24 @@ class Agent:
 
 	def _model(self, model_name):
 		ddqn = Build_model()
-		model = ddqn.build_model(self.state_size, self.neurons, self.action_size, self.num_atoms, self.training)
+		model = ddqn.build_model(self.state_size, self.self_feat_shape, self.neurons, self.action_size, self.num_atoms)
 		if os.path.exists(self.check_index):
 			#如果已經有訓練過，就接著load權重
 			print('-'*52+'{} Weights loaded!!'.format(model_name)+'-'*52)
 			model.load_weights(self.checkpoint_path)
 		else:
 			print('-'*53+'Create new model!!'+'-'*53)
+
+		if self.is_eval == True:
+			model.get_layer('n1').remove_noise()
+			for i in range(self.action_size):
+				model.get_layer('a_{}'.format(i)).remove_noise()
+			model.get_layer('value').remove_noise()
+		else:
+			model.get_layer('n1').sample_noise()
+			for i in range(self.action_size):
+				model.get_layer('a_{}'.format(i)).sample_noise()
+			model.get_layer('value').sample_noise()
 		return model
 	
 	# 把model的權重傳給target model
@@ -106,7 +118,7 @@ class Agent:
 		mini_batch, idxs, is_weights = self.memory.sample(self.batch_size)
 		state_inputs = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
 		next_states = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
-		self_state = np.zeros((self.batch_size,1,7))
+		self_state = np.zeros((self.batch_size, self.self_feat_shape[-2], self.self_feat_shape[-1]))
 		m_prob = [np.zeros((self.batch_size, self.num_atoms)) for i in range(self.action_size)]
 		action, reward, done = [], [], []
 		
