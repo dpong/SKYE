@@ -14,8 +14,8 @@ class Build_model():
         state_input = Input(shape=state_size, name='state_input', dtype='float64')
         norm = BatchNormalization()(state_input)  # 輸入標準化
         # 額外輸入
-        self_state_input = Input(shape=(8,), name='self_state_input', dtype='float64')
-        reshape_s = Reshape((8,))(self_state_input)
+        self_state_input = Input(shape=(7,), name='self_state_input', dtype='float64')
+        reshape_s = Reshape((7,))(self_state_input)
         s1 = Dense(8, activation='relu')(reshape_s)
         # 卷積層們，kernel_size為5天，一週的概念
         con1 = Conv1D(state_size[1], 5, padding='same', activation='relu')(norm)

@@ -87,8 +87,8 @@ class Trading():
                     self.highest_value[0] = account_profit
                 #elif value_diff <= -self.stop_pct and self.highest_value[0] > 0:  #帳面獲利減少的懲罰
                 #    self.reward = value_diff
-                #elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
-                #    self.reward = account_profit / price_value
+                elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
+                    self.reward = account_profit / price_value
                 total_units = get_inventory_units(self.inventory)
                 if self.print_log == True:
                     print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
@@ -102,8 +102,8 @@ class Trading():
                     self.highest_value[1] = account_profit
                 #elif value_diff <= -self.stop_pct and self.highest_value[1] > 0:  #帳面獲利減少的懲罰
                 #    self.reward = value_diff
-                #elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
-                #    self.reward = account_profit / price_value
+                elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
+                    self.reward = account_profit / price_value
                 total_units = get_inventory_units(self.inventory)
                 if self.print_log == True:
                     print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
@@ -142,8 +142,8 @@ class Trading():
             self.highest_value[0] = account_profit
         #elif value_diff <= -self.stop_pct and self.highest_value[0] > 0:  #帳面獲利減少的懲罰
         #    self.reward = value_diff
-        #elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
-        #    self.reward = account_profit / price_value
+        elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
+            self.reward = account_profit / price_value
         price = close * (1+self.commission)
         self.profolio.total_value(close, self.cash, self.inventory, self.commission)
         unit = get_unit(close, self.profolio.profolio_value)
@@ -194,8 +194,8 @@ class Trading():
             self.highest_value[1] = account_profit
         #elif value_diff <= -self.stop_pct and self.highest_value[1] > 0:  #帳面獲利減少的懲罰
         #    self.reward = value_diff
-        #elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
-        #    self.reward = account_profit / price_value
+        elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
+            self.reward = account_profit / price_value
         price = close * (1-self.commission)
         self.profolio.total_value(close, self.cash, self.inventory, self.commission)
         unit = get_unit(close, self.profolio.profolio_value)
@@ -263,39 +263,35 @@ class Trading():
 
         if len(self.inventory) > 0 :  # 持倉
             if self.inventory[0][-1]=='long':
-                holding = [1,0,0]  # 多單
+                holding = [1,0]  # 多單
                 account_profit, price_value, close_value = get_long_account(self.inventory,close,self.commission)
                 if account_profit > 0:
+                    account = [1,0,0]  # 獲利
                     if account_profit / price_value > self.stop_pct:
                         account = [1,0,1]  # 大幅獲利
-                    else:
-                        account = [1,0,0]  # 獲利
                 elif account_profit < 0:
+                    account = [0,1,0]  # 虧損
                     if account_profit / price_value < -self.stop_pct:
                         account = [0,1,1]  # 大幅虧損
-                    else:
-                        account = [0,1,0]  # 虧損
                 elif account_profit == 0:
                     account = [0,0,0]  # 持平
 
             elif self.inventory[0][-1]=='short':
-                holding = [0,0,1]  # 空單
+                holding = [0,1]  # 空單
                 account_profit, price_value, close_value = get_short_account(self.inventory,close,self.commission)
                 if account_profit > 0:
+                    account = [1,0,0]  # 獲利
                     if account_profit / price_value > self.stop_pct:
                         account = [1,0,1]  # 大幅獲利
-                    else:
-                        account = [1,0,0]  # 獲利
                 elif account_profit < 0:
+                    account = [0,1,0]  # 虧損
                     if account_profit / price_value < -self.stop_pct:
                         account = [0,1,1]  # 大幅虧損
-                    else:
-                        account = [0,1,0]  # 虧損
                 elif account_profit == 0:
                     account = [0,0,0]  # 持平
 
         else:
-            holding = [0,1,0]  # 空手
+            holding = [0,0]  # 空手
             account = [0,0,0]  # 持平
         
         out = np.array([cash + holding + account])
