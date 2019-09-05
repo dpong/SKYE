@@ -26,14 +26,14 @@ class Agent:
 		self.epsilon_min = 0.01
 		self.epsilon_decay = 0.995
 		self.gamma = 0.95
-		self.batch_size = 64
+		self.batch_size = 128
 		self.num_atoms = 51 # for C51
 		self.v_max = 5
 		self.v_min = -5 
 		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
 		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
 		self.epoch_loss_avg = tf.keras.metrics.Mean()
-		self.epochs = 10
+		self.epochs = 5
 		self.bar = Progbar(self.epochs)
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
@@ -106,7 +106,7 @@ class Agent:
 		mini_batch, idxs, is_weights = self.memory.sample(self.batch_size)
 		state_inputs = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
 		next_states = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
-		self_state = np.zeros((self.batch_size,1,8))
+		self_state = np.zeros((self.batch_size,1,7))
 		m_prob = [np.zeros((self.batch_size, self.num_atoms)) for i in range(self.action_size)]
 		action, reward, done = [], [], []
 		

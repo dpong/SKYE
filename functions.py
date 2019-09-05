@@ -1,8 +1,8 @@
 import numpy as np
 import random, math
-import pandas_datareader as pdr
+#import pandas_datareader as pdr
 import pandas as pd
-from scipy import special
+
 
 
 # prints formatted price
@@ -23,7 +23,8 @@ def get_shape(data,window_size):
 
 #取得歷史資料
 def get_data(ticker, start, end):
-	df = pdr.DataReader('{}'.format(ticker),'yahoo', start=start, end=end)
+	#df = pdr.DataReader('{}'.format(ticker),'yahoo', start=start, end=end)
+	df = pd.read_csv('{}_stock_price_train.csv'.format(ticker))
 	return df
 
 #計算unit要訂多少
