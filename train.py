@@ -93,7 +93,8 @@ for e in range(1, episode_count + 1):
 
 		if done:
 			if not trading.win_count+trading.lose_count ==0:
-				win_r = 100 * trading.win_count / (trading.win_count+trading.lose_count)
+				traded_times = trading.win_count + trading.lose_count
+				win_r = 100 * trading.win_count / traded_times
 			else:
 				win_r = 0
 			sharp = profolio.sharp_ratio(data, step_n)
@@ -105,6 +106,7 @@ for e in range(1, episode_count + 1):
 			+ " | Realized Return Ratio: %.2f%%" % round(100 * trading.total_profit / trading.init_cash, 2))
 			print("Max DrawDown: %.2f%%" % round(-profolio.max_drawdown*100,2)
 			+ " | Sharp Ratio: %.2f%%" % sharp
+			+ " | Traded : " + str(traded_times)
 			+ " | Win Rate: %.2f%%" % round(win_r,2)
 			+ " | Max Cont Lose: " + str(trading.max_con_lose)
 			+ " | Total Reward: " + str(round(trading.total_reward,2)))
