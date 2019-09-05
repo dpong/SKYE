@@ -10,7 +10,7 @@ class Trading():
         self.reward_boost = 1  #reward值放大倍率，加速
         self.commission = 0.003  #千分之三的手續費
         self.stop_pct = 0.1  #停損%數
-        self.pr_ratio = 1.5  #獲利/風險給reward的比例，讓agent趨向報酬會是規避風險
+        self.pr_ratio = 1  #獲利/風險給reward的比例，讓agent趨向報酬會是規避風險
         self.init_cash = init_cash
         self.cash = init_cash
         self.inventory = []  #存入價格資訊：close, price, units, 動作
