@@ -14,11 +14,12 @@ config.inter_op_parallelism_threads = 44
 tf.compat.v1.Session(config=config)
 
 class Agent:
-	def __init__(self, ticker, state_size, neurons, m_path, is_eval=False):
+	def __init__(self, ticker, state_size, self_state_shape, neurons, m_path, is_eval=False):
 		self.state_size = state_size # normalized previous days
+		self.self_feat_shape = self_state_shape
 		self.action_size = 4 
 		self.neurons = neurons
-		self.memory_size = 10000 #記憶長度
+		self.memory_size = 20000 #記憶長度
 		self.memory = Memory(self.memory_size)
 		self.epsilon = 0.5
 		self.epsilon_min = 0.01
@@ -26,7 +27,7 @@ class Agent:
 		self.gamma = 0.95
 		self.batch_size = 64
 		self.epoch_loss_avg = tf.keras.metrics.Mean()
-		self.epochs = 10
+		self.epochs = 5
 		self.bar = Progbar(self.epochs)
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
@@ -45,7 +46,7 @@ class Agent:
 
 	def _model(self, model_name):
 		ddqn = Build_model()
-		model = ddqn.build_model(self.state_size, self.neurons, self.action_size)
+		model = ddqn.build_model(self.state_size, self.self_feat_shape, self.neurons, self.action_size)
 		if os.path.exists(self.check_index):
 			#如果已經有訓練過，就接著load權重
 			print('-'*52+'{} Weights loaded!!'.format(model_name)+'-'*52)
@@ -97,7 +98,7 @@ class Agent:
 		mini_batch, idxs, is_weights = self.memory.sample(self.batch_size)
 		state_inputs = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
 		next_states = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
-		self_state = np.zeros((self.batch_size,1,7))
+		self_state = np.zeros((self.batch_size, self.self_feat_shape[-2], self.self_feat_shape[-1]))
 		action, reward, done = [], [], []
 		
 		for i in range(self.batch_size):

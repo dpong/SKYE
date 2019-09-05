@@ -29,7 +29,8 @@ data = init_data(df, init_cash)
 step_n = 3
 #給agent初始化輸入的緯度
 input_shape, neurons = get_shape(data[:window_size], window_size)
-agent = Agent(ticker, input_shape, neurons, m_path, is_eval=False)
+self_state = trading.self_states(data[0,0])
+agent = Agent(ticker, input_shape, self_state.shape, neurons, m_path, is_eval=False)
 
 
 l = len(data) - step_n

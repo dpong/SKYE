@@ -10,7 +10,7 @@ class Trading():
         self.reward_boost = 1  #reward值放大倍率，加速
         self.commission = 0.003  #千分之三的手續費
         self.stop_pct = 0.1  #停損%數
-        self.pr_ratio = 1  #獲利/風險給reward的比例，讓agent趨向報酬會是規避風險
+        self.pr_ratio = 1.5  #獲利/風險給reward的比例，讓agent趨向報酬會是規避風險
         self.init_cash = init_cash
         self.cash = init_cash
         self.inventory = []  #存入價格資訊：close, price, units, 動作
@@ -32,17 +32,15 @@ class Trading():
             if self.safe_margin * self.cash > close * unit:
                 self._long_new(close, e, episode_count, t, l)
             else:
-                #action = 0
-                self._hold(close, e, episode_count, t, l)  # 好像不該改 action
-                self.reward += -0.1
+                self._hold(close, e, episode_count, t, l) 
+                self.reward += -0.05
         
         elif action == 1 and len(self.inventory) == 0:
             if self.safe_margin * self.cash > close * unit:
                 self._long_new_empty(close, e, episode_count, t, l)
             else:
-                #action = 0
                 self._hold(close, e, episode_count, t, l)
-                self.reward += -0.1
+                self.reward += -0.05
         
         elif action == 2 and len(self.inventory) > 0 and self.inventory[0][-1]=='long':
             self._short_clean(close, e, episode_count, t, l)
@@ -51,25 +49,22 @@ class Trading():
             if self.safe_margin * self.cash > close * unit:
                 self._short_new(close, e, episode_count, t, l)
             else:
-                #action = 0
                 self._hold(close, e, episode_count, t, l)
-                self.reward += -0.1
+                self.reward += -0.05
         
         elif action == 2 and len(self.inventory) == 0:
             if self.safe_margin * self.cash > close * unit:
                 self._short_new_empty(close, e, episode_count, t, l)
             else:
-                #action = 0
                 self._hold(close, e, episode_count, t, l)
-                self.reward += -0.1
+                self.reward += -0.05
         
         elif action == 3 and len(self.inventory) > 0:
             self._clean_inventory(close, e, episode_count, t, l)
         
         elif action == 3 and len(self.inventory) == 0:
-            #action = 0
             self._hold(close, e, episode_count, t, l)
-            self.reward += -0.1
+            self.reward += -0.05
         
         if action == 0: #不動作
             self._hold(close, e, episode_count, t, l)
