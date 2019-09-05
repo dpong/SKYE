@@ -6,7 +6,6 @@ import numpy as np
 from agent.prioritized_memory import Memory
 from agent.model import Build_model
 from tensorflow.compat.v1.train import get_or_create_global_step
-from tensorflow.compat.v1.losses import huber_loss
 from tensorflow.keras.utils import Progbar
 
 config = tf.compat.v1.ConfigProto()
@@ -21,7 +20,7 @@ class Agent:
 		self.neurons = neurons
 		self.memory_size = 10000 #記憶長度
 		self.memory = Memory(self.memory_size)
-		self.epsilon = 1
+		self.epsilon = 0.5
 		self.epsilon_min = 0.01
 		self.epsilon_decay = 0.995
 		self.gamma = 0.95
@@ -35,25 +34,33 @@ class Agent:
 		self.check_index = self.checkpoint_path + '.index'   #checkpoint裡面的檔案多加了一個.index
 		
 		if is_eval==False:
-			self.training = True
 			self.model = self._model('  Model')
 			self.target_model = self._model(' Target')
 		else:
-			self.training = False
 			self.model = self._model('  Model')
 			
 		self.optimizer = tf.optimizers.Adam(learning_rate=0.00025, epsilon = 0.0003125)
+		self.loss_function = tf.keras.losses.Huber()
 
 
 	def _model(self, model_name):
 		ddqn = Build_model()
-		model = ddqn.build_model(self.state_size, self.neurons, self.action_size, self.training)
+		model = ddqn.build_model(self.state_size, self.neurons, self.action_size)
 		if os.path.exists(self.check_index):
 			#如果已經有訓練過，就接著load權重
 			print('-'*52+'{} Weights loaded!!'.format(model_name)+'-'*52)
 			model.load_weights(self.checkpoint_path)
 		else:
 			print('-'*53+'Create new model!!'+'-'*53)
+
+		if self.is_eval == True:
+			model.get_layer('n1').remove_noise()
+			model.get_layer('a').remove_noise()
+			model.get_layer('value').remove_noise()
+		else:
+			model.get_layer('n1').sample_noise()
+			model.get_layer('a').sample_noise()
+			model.get_layer('value').sample_noise()
 		return model
 	
 	# 把model的權重傳給target model
@@ -78,7 +85,7 @@ class Agent:
 	# loss function
 	def _loss(self, model, x, y):
 		y_ = self.model(x)
-		return huber_loss(y, y_)
+		return self.loss_function(y_true=y, y_pred=y_)
 	# gradient
 	def _grad(self, model, inputs, targets):
 		with tf.GradientTape() as tape:

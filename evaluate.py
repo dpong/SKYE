@@ -60,6 +60,13 @@ for e in range(1, episode_count + 1):
 			trading.max_con_lose = trading.lose_count
 
 		done = True if t == l - 1 else False
+		# 整局都沒獲利的話給懲罰
+		if done == True and trading.total_profit <= 0:
+			trading.reward += -0.5
+		agent.append_sample([state, self_state], action, trading.reward, [next_state, self_state], done)
+		# 更新總 reward
+		trading.total_reward += trading.reward
+		# 紀錄存入多少記憶	
 
 		#計算max drawdown
 		profolio.eval_draw_down(data[t+1, n_close], trading.cash, trading.inventory, trading.commission)

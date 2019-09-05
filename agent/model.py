@@ -3,14 +3,14 @@ import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Add, Subtract, Lambda, BatchNormalization, concatenate
 from tensorflow.keras.layers import Conv1D, Flatten, MaxPooling1D, GlobalAveragePooling1D, Reshape
 from tensorflow.keras.models import Model
-from agent.noisynet import NoisyDense
+from agent.noisydense import NoisyDense
 import tensorflow.keras.backend as K
 from tensorflow.nn import softmax
 
 
 class Build_model():
     tf.keras.backend.set_floatx('float64')
-    def build_model(self, state_size, neurons, action_size, training):
+    def build_model(self, state_size, neurons, action_size):
         state_input = Input(shape=state_size, name='state_input', dtype='float64')
         norm = BatchNormalization()(state_input)  # 輸入標準化
         # 額外輸入
@@ -26,14 +26,14 @@ class Build_model():
         # 外插 self_state_input
         connect = concatenate([flat_norm, s1])
         # 連結層
-        n1 = NoisyDense(neurons, activation='relu')(connect)
+        n1 = NoisyDense(neurons, activation='relu', name='n1')(connect)
         n1_norm = BatchNormalization()(n1)
         # deuling advantage
-        a = NoisyDense(action_size, activation='linear')(n1_norm)
+        a = NoisyDense(action_size, activation='linear', name='a')(n1_norm)
         a_mean = Lambda(lambda x: K.mean(x, axis=1, keepdims=True))(a)
         advantage = Subtract()([a, a_mean])
         # deuling value
-        value = NoisyDense(1, activation='linear')(n1_norm)
+        value = NoisyDense(1, activation='linear', name='value')(n1_norm)
         # combine
         q = Add()([value, advantage])
 
