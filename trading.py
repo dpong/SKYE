@@ -19,7 +19,6 @@ class Trading():
         self.profolio = Profolio(init_cash)
         self.win_count = 0
         self.lose_count = 0
-        self.con_lose = 0
         self.max_con_lose = 0
         self.print_log = False
 
@@ -76,7 +75,6 @@ class Trading():
             self._hold(close, e, episode_count, t, l)
 
         self.reward *= self.reward_boost #放大尺度
-        self.total_reward += self.reward
         return action
 
 
@@ -89,8 +87,8 @@ class Trading():
                     self.highest_value[0] = account_profit
                 #elif value_diff <= -self.stop_pct and self.highest_value[0] > 0:  #帳面獲利減少的懲罰
                 #    self.reward = value_diff
-                elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
-                    self.reward = account_profit / price_value
+                #elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
+                #    self.reward = account_profit / price_value
                 total_units = get_inventory_units(self.inventory)
                 if self.print_log == True:
                     print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
@@ -104,8 +102,8 @@ class Trading():
                     self.highest_value[1] = account_profit
                 #elif value_diff <= -self.stop_pct and self.highest_value[1] > 0:  #帳面獲利減少的懲罰
                 #    self.reward = value_diff
-                elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
-                    self.reward = account_profit / price_value
+                #elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
+                #    self.reward = account_profit / price_value
                 total_units = get_inventory_units(self.inventory)
                 if self.print_log == True:
                     print("Ep " + str(e) + "/" + str(episode_count)+" %.2f%%" % round(t*(100/l),2) + " Cash: " + formatPrice(self.cash)
@@ -125,10 +123,8 @@ class Trading():
         profit = (sold_price[1] - price) * sold_price[2]  # 2號是unit
         if profit > 0 :
             self.win_count += 1
-            self.con_lose = 0
         elif profit < 0 :
             self.lose_count += 1
-            self.con_lose += 1
         self.total_profit += profit
         self.reward = self.pr_ratio * profit / (sold_price[0] * sold_price[2])
         self.cash += profit + sold_price[0] * sold_price[2]
@@ -146,8 +142,8 @@ class Trading():
             self.highest_value[0] = account_profit
         #elif value_diff <= -self.stop_pct and self.highest_value[0] > 0:  #帳面獲利減少的懲罰
         #    self.reward = value_diff
-        elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
-            self.reward = account_profit / price_value
+        #elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
+        #    self.reward = account_profit / price_value
         price = close * (1+self.commission)
         self.profolio.total_value(close, self.cash, self.inventory, self.commission)
         unit = get_unit(close, self.profolio.profolio_value)
@@ -179,10 +175,8 @@ class Trading():
         profit = (price - bought_price[1]) * bought_price[2]
         if profit > 0 :
             self.win_count += 1
-            self.con_lose = 0
         elif profit < 0 :
             self.lose_count += 1
-            self.con_lose += 1
         self.total_profit += profit
         self.reward = self.pr_ratio * profit / (bought_price[0] * bought_price[2])
         self.cash += profit + bought_price[0] * bought_price[2]
@@ -200,8 +194,8 @@ class Trading():
             self.highest_value[1] = account_profit
         #elif value_diff <= -self.stop_pct and self.highest_value[1] > 0:  #帳面獲利減少的懲罰
         #    self.reward = value_diff
-        elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
-            self.reward = account_profit / price_value
+        #elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
+        #    self.reward = account_profit / price_value
         price = close * (1-self.commission)
         self.profolio.total_value(close, self.cash, self.inventory, self.commission)
         unit = get_unit(close, self.profolio.profolio_value)
@@ -233,10 +227,8 @@ class Trading():
             profit, price_value, close_value = get_long_account(self.inventory,close,self.commission)
             if profit > 0 :
                 self.win_count += 1
-                self.con_lose = 0
             elif profit < 0 :
                 self.lose_count += 1
-                self.con_lose += 1
             self.reward = self.pr_ratio * (profit / price_value)
             self.total_profit += profit
             self.cash += close_value + profit
@@ -249,10 +241,8 @@ class Trading():
             profit, price_value, close_value = get_short_account(self.inventory,close,self.commission)
             if profit > 0 :
                 self.win_count += 1
-                self.con_lose = 0
             elif profit < 0 :
                 self.lose_count += 1
-                self.con_lose += 1
             self.reward = self.pr_ratio * (profit / price_value)
             self.total_profit += profit
             self.cash += close_value + profit

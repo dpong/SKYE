@@ -3,7 +3,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Add, Subtract, Lambda, BatchNormalization, concatenate
 from tensorflow.keras.layers import Conv1D, Flatten, MaxPooling1D, GlobalAveragePooling1D, Reshape
 from tensorflow.keras.models import Model
-from agent.noisynet import NoisyDense
+#from agent.noisynet import NoisyDense
 import tensorflow.keras.backend as K
 from tensorflow.nn import softmax
 
@@ -29,11 +29,11 @@ class Build_model():
         n1 = Dense(neurons, activation='relu')(connect)
         n1_norm = BatchNormalization()(n1)
         # deuling advantage
-        a = NoisyDense(action_size, activation='linear')(n1_norm)
+        a = Dense(action_size, activation='linear')(n1_norm)
         a_mean = Lambda(lambda x: K.mean(x, axis=1, keepdims=True))(a)
         advantage = Subtract()([a, a_mean])
         # deuling value
-        value = NoisyDense(1, activation='linear')(n1_norm)
+        value = Dense(1, activation='linear')(n1_norm)
         # combine
         q = Add()([value, advantage])
 

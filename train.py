@@ -60,14 +60,16 @@ for e in range(1, episode_count + 1):
 		traded_action = trading.policy(action, data[t+1, n_close], e, episode_count, t, l)
 
 		# 紀錄最大連續虧損
-		if trading.con_lose > trading.max_con_lose:
-			trading.max_con_lose = trading.con_lose
+		if trading.lose_count > trading.max_con_lose:
+			trading.max_con_lose = trading.lose_count
 
 		done = True if t == l - 1 else False
 		# 整局都沒獲利的話給懲罰
 		if done == True and trading.total_profit <= 0:
 			trading.reward += -0.5
 		agent.append_sample([state, self_state], action, trading.reward, [next_state, self_state], done)
+		# 更新總 reward
+		trading.total_reward += trading.reward
 		# 紀錄存入多少記憶	
 		train_count += 1
 		# 動作一定次數才會訓練，然後存權重
