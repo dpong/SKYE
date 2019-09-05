@@ -34,7 +34,7 @@ class Agent:
 		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
 		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
 		self.epoch_loss_avg = tf.keras.metrics.Mean()
-		self.epochs = 5
+		self.epochs = 10
 		self.bar = Progbar(self.epochs)
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
