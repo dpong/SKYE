@@ -13,9 +13,10 @@ class Build_model():
         state_input = Input(shape=state_size, name='state_input', dtype='float64')
         norm = BatchNormalization()(state_input)  # 輸入標準化
         # 額外輸入
-        self_state_input = Input(shape=(self_feat_shape[-1],), name='self_state_input', dtype='float64')
-        reshape_s = Reshape((self_feat_shape[-1],))(self_state_input)
-        s1 = Dense(8, activation='relu')(reshape_s)
+        self_state_input = Input(shape=(self_feat_shape[-2], self_feat_shape[-1]), name='self_state_input', dtype='float64')
+        s1 = Conv1D(self_feat_shape[-1], 1, padding='same', activation='relu')(self_state_input)
+        flat_s1 = Flatten()(s1)
+        flat_norm_s1 = BatchNormalization()(flat_s1)
         # 卷積層們，kernel_size為5天，一週的概念
         con1 = Conv1D(state_size[1], 5, padding='same', activation='relu')(norm)
         con2 = Conv1D(state_size[1], 5, padding='same', activation='relu')(con1)
@@ -23,7 +24,7 @@ class Build_model():
         flat = Flatten()(pool_max)
         flat_norm = BatchNormalization()(flat)
         # 外插 self_state_input
-        connect = concatenate([flat_norm, s1])
+        connect = concatenate([flat_norm, flat_norm_s1])
         # 連結層
         n1 = Dense(neurons, activation='relu', name='n1')(connect)
         n1_norm = BatchNormalization()(n1)

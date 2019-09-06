@@ -1,6 +1,7 @@
 from functions import *
 from profolio import *
 import numpy as np
+from tensorflow.keras.utils import to_categorical
 
 class Trading():
     def __init__(self,init_cash):
@@ -64,7 +65,7 @@ class Trading():
         
         elif action == 3 and len(self.inventory) == 0:
             self._hold(close, e, episode_count, t, l)
-            #self.reward += -0.05
+            self.reward += -0.05
         
         if action == 0: #不動作
             self._hold(close, e, episode_count, t, l)
@@ -251,46 +252,52 @@ class Trading():
 
     def self_states(self, close):
         unit = get_unit(close, self.profolio.profolio_value)
+        output = np.zeros((1,3), dtype='float64')  
+        '''現金狀態，持倉狀態，帳面狀態
+             0     1      2
+        0   沒錢   空手   持平
+        1   有錢   多單   賺錢
+        2   空著   空單   賠錢
+        '''
         if self.safe_margin * self.cash >= close * unit:   # 判斷現金
-            cash = [1,0]  # 足夠現金
+            output[0,0] = 1  # 足夠現金
         elif self.safe_margin * self.cash < close * unit:
-            cash = [0,1]  # 不夠現金
+            output[0,0] = 0  # 不夠現金
 
         if len(self.inventory) > 0 :  # 持倉
             if self.inventory[0][-1]=='long':
-                holding = [1,0,0]  # 多單
+                output[0,1] = 1  # 多單
                 account_profit, price_value, close_value = get_long_account(self.inventory,close,self.commission)
                 if account_profit > 0:
-                    account = [1,0,0]  # 獲利
+                    output[0,2] = 1  # 獲利
                     #if account_profit / price_value > self.stop_pct:
                     #    account = [1,0,1]  # 大幅獲利
                 elif account_profit < 0:
-                    account = [0,1,0]  # 虧損
+                    output[0,2] = 2  # 虧損
                     #if account_profit / price_value < -self.stop_pct:
                     #    account = [0,1,1]  # 大幅虧損
                 elif account_profit == 0:
-                    account = [0,0,1]  # 持平
+                    output[0,2] = 0  # 持平
             elif self.inventory[0][-1]=='short':
-                holding = [0,1,0]  # 空單
+                output[0,1] = 2  # 空單
                 account_profit, price_value, close_value = get_short_account(self.inventory,close,self.commission)
                 if account_profit > 0:
-                    account = [1,0,0]  # 獲利
+                    output[0,2] = 1 # 獲利
                     #if account_profit / price_value > self.stop_pct:
                     #    account = [1,0,1]  # 大幅獲利
                 elif account_profit < 0:
-                    account = [0,1,0]  # 虧損
+                    output[0,2] = 2  # 虧損
                     #if account_profit / price_value < -self.stop_pct:
                     #    account = [0,1,1]  # 大幅虧損
                 elif account_profit == 0:
-                    account = [0,0,1]  # 持平
+                    output[0,2] = 0  # 持平
 
         else:
-            holding = [0,0,1]  # 空手
-            account = [0,0,1]  # 持平
+            output[0,1] = 0  # 空手
+            output[0,2] = 0  # 持平
         
-        out = np.array([cash + holding + account])
-        out.dtype = 'float64'
-        return out
+        one_hot_out = to_categorical(output, num_classes=3)
+        return one_hot_out
         
         
         
