@@ -19,7 +19,7 @@ class NoisyDense(tf.keras.layers.Layer):
         self.input_dim = input_shape[-1]
 
         # mu亂數，sigma常數0.1 
-        mu_init = tf.keras.initializers.glorot_normal()
+        mu_init = tf.keras.initializers.he_uniform()
         sigma_init = tf.constant_initializer(value=0.1)
         # need Bias or not
         mu_bias_init = mu_init if self.bias else tf.zeros_initializer()

@@ -21,16 +21,16 @@ class Agent:
 		self.self_feat_shape = self_state_shape
 		self.action_size = 4 
 		self.neurons = neurons
-		self.memory_size = 20000 #記憶長度
+		self.memory_size = 10000 #記憶長度
 		self.memory = Memory(self.memory_size)
 		self.epsilon = 1
 		self.epsilon_min = 0.01
-		self.epsilon_decay = 0.999
+		self.epsilon_decay = 0.995
 		self.gamma = 0.95
-		self.batch_size = 64
+		self.batch_size = 32
 		self.num_atoms = 51 # for C51
-		self.v_max = 5
-		self.v_min = -5 
+		self.v_max = 1
+		self.v_min = -1 
 		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
 		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
 		self.epoch_loss_avg = tf.keras.metrics.Mean()
@@ -49,30 +49,18 @@ class Agent:
 			self.training = False
 			self.model = self._model('  Model')
 			
-		self.optimizer = tf.optimizers.Adam(learning_rate=0.00025, epsilon = 0.0003125)
+		self.optimizer = tf.optimizers.Adam(learning_rate=0.0000625, epsilon = 0.00015)
 
 
 	def _model(self, model_name):
 		ddqn = Build_model()
-		model = ddqn.build_model(self.state_size, self.self_feat_shape, self.neurons, self.action_size, self.num_atoms)
+		model = ddqn.build_model(self.state_size, self.self_feat_shape, self.neurons, self.action_size, self.num_atoms, self.training)
 		if os.path.exists(self.check_index):
 			#如果已經有訓練過，就接著load權重
 			print('-'*52+'{} Weights loaded!!'.format(model_name)+'-'*52)
 			model.load_weights(self.checkpoint_path)
 		else:
 			print('-'*53+'Create new model!!'+'-'*53)
-		
-		if self.is_eval == True:
-			model.get_layer('n1').remove_noise()
-			for i in range(self.action_size):
-				model.get_layer('a_{}'.format(i)).remove_noise()
-			model.get_layer('value').remove_noise()
-		else:
-			model.get_layer('n1').sample_noise()
-			for i in range(self.action_size):
-				model.get_layer('a_{}'.format(i)).sample_noise()
-			model.get_layer('value').sample_noise()
-			
 		return model
 	
 	# 把model的權重傳給target model
@@ -85,6 +73,8 @@ class Agent:
 		p = self._tensor_to_np(self.model([state, self_state]))
 		p_concat = np.vstack(p)
 		q = np.sum(np.multiply(p_concat, np.array(self.z)), axis=1) 
+		print(q)
+		
 		action_idx = np.argmax(q)
 		return action_idx
 
@@ -136,7 +126,7 @@ class Agent:
 			done.append(mini_batch[i][4])
 
 		p = self._tensor_to_np(self.model([state_inputs, self_state]))
-		#new_p = p
+		new_p = p
 		p_next = self._tensor_to_np(self.model([next_states, self_state])) 
 		p_t_next = self._tensor_to_np(self.target_model([next_states, self_state]))
 			
@@ -144,7 +134,6 @@ class Agent:
 		q = np.sum(np.multiply(np.vstack(p_next), np.array(self.z)), axis=1) # length (num_atoms x num_actions)
 		q = q.reshape((self.batch_size, self.action_size), order='F')
 		optimal_action_idxs = np.argmax(q, axis=1)
-
 
 		for i in range(self.batch_size):
 			if done[i]: # Terminal State
@@ -161,16 +150,15 @@ class Agent:
 					m_prob[action[i]][i][int(m_l)] += p_t_next[optimal_action_idxs[i]][i][j] * (m_u - bj)
 					m_prob[action[i]][i][int(m_u)] += p_t_next[optimal_action_idxs[i]][i][j] * (bj - m_l)
 			
-			#new_p[action[i]][i][:] = m_prob[action[i]][i][:]	
-		
+			new_p[action[i]][i][:] = m_prob[action[i]][i][:]	
 		for i in range(self.batch_size):
-			error = abs(tf.reduce_sum(m_prob[action[i]][i] * np.log(p[action[i]][i]+1e-9)))
+			error = abs(tf.reduce_sum(new_p[action[i]][i] * np.log(p[action[i]][i]+1e-9)))
 			error *= is_weights[i]
 			self.memory.update(idxs[i], error)
 
 		# train model
 		for i in range(self.epochs):
-			loss_value, grads = self._grad(self.model, [state_inputs, self_state], m_prob)
+			loss_value, grads = self._grad(self.model, [state_inputs, self_state], new_p)
 			self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables),
 				get_or_create_global_step())
 			self.epoch_loss_avg(loss_value)

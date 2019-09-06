@@ -2,6 +2,8 @@ import numpy as np
 import random, math
 #import pandas_datareader as pdr
 import pandas as pd
+from sklearn import preprocessing
+scaler = preprocessing.MinMaxScaler()
 
 
 
@@ -11,7 +13,8 @@ def formatPrice(n):
 
 # returns an n-day state representation ending at time t
 def getState(data, t, n):
-	out = np.array([data[t-n:t,:-2]])  #修正input形狀
+	out = scaler.fit_transform(data[t-n:t,:-2])
+	out = np.array([out])  #修正input形狀
 	out.dtype = 'float64'
 	return out
 
