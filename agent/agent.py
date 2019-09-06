@@ -21,9 +21,9 @@ class Agent:
 		self.neurons = neurons
 		self.memory_size = 20000 #記憶長度
 		self.memory = Memory(self.memory_size)
-		self.epsilon = 0.5
+		self.epsilon = 1
 		self.epsilon_min = 0.01
-		self.epsilon_decay = 0.995
+		self.epsilon_decay = 0.999
 		self.gamma = 0.95
 		self.batch_size = 64
 		self.epoch_loss_avg = tf.keras.metrics.Mean()
@@ -53,7 +53,7 @@ class Agent:
 			model.load_weights(self.checkpoint_path)
 		else:
 			print('-'*53+'Create new model!!'+'-'*53)
-
+		'''
 		if self.is_eval == True:
 			model.get_layer('n1').remove_noise()
 			model.get_layer('a').remove_noise()
@@ -62,6 +62,7 @@ class Agent:
 			model.get_layer('n1').sample_noise()
 			model.get_layer('a').sample_noise()
 			model.get_layer('value').sample_noise()
+			'''
 		return model
 	
 	# 把model的權重傳給target model

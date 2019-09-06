@@ -26,14 +26,14 @@ class Build_model():
         # 外插 self_state_input
         connect = concatenate([flat_norm, s1])
         # 連結層
-        n1 = NoisyDense(neurons, activation='relu', name='n1')(connect)
+        n1 = Dense(neurons, activation='relu', name='n1')(connect)
         n1_norm = BatchNormalization()(n1)
         # deuling advantage
-        a = NoisyDense(action_size, activation='linear', name='a')(n1_norm)
+        a = Dense(action_size, activation='linear', name='a')(n1_norm)
         a_mean = Lambda(lambda x: K.mean(x, axis=1, keepdims=True))(a)
         advantage = Subtract()([a, a_mean])
         # deuling value
-        value = NoisyDense(1, activation='linear', name='value')(n1_norm)
+        value = Dense(1, activation='linear', name='value')(n1_norm)
         # combine
         q = Add()([value, advantage])
 
