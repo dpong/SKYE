@@ -61,8 +61,8 @@ class Agent:
 			model.load_weights(self.checkpoint_path)
 		else:
 			print('-'*53+'Create new model!!'+'-'*53)
-			'''
-			if self.is_eval == True:
+		
+		if self.is_eval == True:
 			model.get_layer('n1').remove_noise()
 			for i in range(self.action_size):
 				model.get_layer('a_{}'.format(i)).remove_noise()
@@ -72,7 +72,7 @@ class Agent:
 			for i in range(self.action_size):
 				model.get_layer('a_{}'.format(i)).sample_noise()
 			model.get_layer('value').sample_noise()
-			'''
+			
 		return model
 	
 	# 把model的權重傳給target model
@@ -91,9 +91,13 @@ class Agent:
 	# Prioritized experience replay
 	# save sample (error,<s,a,r,s'>) to the replay memory
 	def append_sample(self, state, action, reward, next_state, done):
-		max_p = np.max(self.memory.tree.tree[-self.memory.capacity:])
-		if max_p == 0:
-			max_p = self.memory.abs_err_upper  # clipped abs error feat 莫煩
+		if not reward == 0:
+			max_p = 1000  #如果有動靜則給超大的
+		else:
+			max_p = 1  # 預設給1
+		#max_p = np.max(self.memory.tree.tree[-self.memory.capacity:])
+		#if max_p == 0:
+		#	max_p = self.memory.abs_err_upper
 		self.memory.add(max_p, (state, action, reward, next_state, done))  # set the max p for new p
 
 	def _tensor_to_np(self, x):

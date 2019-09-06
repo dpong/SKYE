@@ -77,11 +77,12 @@ for e in range(1, episode_count + 1):
 				agent.train_model()
 				agent.model.save_weights(agent.checkpoint_path, save_format='tf')
 				train_count = 0
-				target_update +=1
-			# 5次training後更新target model
-			if target_update == 5 :
+				#target_update +=1
 				agent.update_target_model()
-				target_update = 0
+			# 5次training後更新target model
+			#if target_update == 5 :
+			#	agent.update_target_model()
+			#	target_update = 0
 
 		#計算max drawdown
 		profolio.eval_draw_down(data[t+1, n_close], trading.cash, trading.inventory, trading.commission)
