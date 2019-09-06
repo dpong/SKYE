@@ -3,7 +3,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Add, Subtract, Lambda, BatchNormalization, concatenate
 from tensorflow.keras.layers import Conv1D, Flatten, MaxPooling1D, GlobalAveragePooling1D, Reshape
 from tensorflow.keras.models import Model
-from agent.noisydense import NoisyDense
+#from agent.noisydense import NoisyDense
 import tensorflow.keras.backend as K
 
 
@@ -25,7 +25,7 @@ class Build_model():
         # 外插 self_state_input
         connect = concatenate([flat_norm, s1])
         # 連結層
-        n1 = NoisyDense(neurons, activation='relu', name='n1')(connect)
+        n1 = Dense(neurons, activation='relu', name='n1')(connect)
         n1_norm = BatchNormalization()(n1)
         # 開始 distribution
         duel_distribution_list_a = []
@@ -34,11 +34,11 @@ class Build_model():
         # 建立一堆 Noisy 層 with elu activations
         for i in range(action_size):
             duel_distribution_list_a.append(
-                NoisyDense(atoms, activation='linear', name='a_{}'.format(i))(n1_norm)
+                Dense(atoms, activation='linear', name='a_{}'.format(i))(n1_norm)
                 )
         # deuling 計算 value     
         #value_in = tf.concat([t for t in norm_list_v], 1)
-        value = NoisyDense(atoms, activation='elu', name='value')(n1_norm)
+        value = Dense(atoms, activation='elu', name='value')(n1_norm)
 
         # dueling 計算 a 的 mean 值
         a_mean = tf.reduce_mean(duel_distribution_list_a, 0)

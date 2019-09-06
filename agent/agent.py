@@ -21,20 +21,20 @@ class Agent:
 		self.self_feat_shape = self_state_shape
 		self.action_size = 4 
 		self.neurons = neurons
-		self.memory_size = 10000 #記憶長度
+		self.memory_size = 20000 #記憶長度
 		self.memory = Memory(self.memory_size)
-		self.epsilon = 0.5
+		self.epsilon = 1
 		self.epsilon_min = 0.01
-		self.epsilon_decay = 0.995
+		self.epsilon_decay = 0.999
 		self.gamma = 0.95
-		self.batch_size = 128
+		self.batch_size = 64
 		self.num_atoms = 51 # for C51
 		self.v_max = 5
 		self.v_min = -5 
 		self.delta_z = (self.v_max - self.v_min) / float(self.num_atoms - 1)
 		self.z = [self.v_min + i * self.delta_z for i in range(self.num_atoms)]
 		self.epoch_loss_avg = tf.keras.metrics.Mean()
-		self.epochs = 10
+		self.epochs = 5
 		self.bar = Progbar(self.epochs)
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
@@ -61,8 +61,8 @@ class Agent:
 			model.load_weights(self.checkpoint_path)
 		else:
 			print('-'*53+'Create new model!!'+'-'*53)
-
-		if self.is_eval == True:
+			'''
+			if self.is_eval == True:
 			model.get_layer('n1').remove_noise()
 			for i in range(self.action_size):
 				model.get_layer('a_{}'.format(i)).remove_noise()
@@ -72,6 +72,7 @@ class Agent:
 			for i in range(self.action_size):
 				model.get_layer('a_{}'.format(i)).sample_noise()
 			model.get_layer('value').sample_noise()
+			'''
 		return model
 	
 	# 把model的權重傳給target model
