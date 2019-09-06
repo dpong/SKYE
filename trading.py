@@ -258,35 +258,35 @@ class Trading():
 
         if len(self.inventory) > 0 :  # 持倉
             if self.inventory[0][-1]=='long':
-                holding = [1,0]  # 多單
+                holding = [1,0,0]  # 多單
                 account_profit, price_value, close_value = get_long_account(self.inventory,close,self.commission)
                 if account_profit > 0:
-                    account = [1,0]  # 獲利
+                    account = [1,0,0]  # 獲利
                     #if account_profit / price_value > self.stop_pct:
                     #    account = [1,0,1]  # 大幅獲利
                 elif account_profit < 0:
-                    account = [0,1]  # 虧損
+                    account = [0,1,0]  # 虧損
                     #if account_profit / price_value < -self.stop_pct:
                     #    account = [0,1,1]  # 大幅虧損
                 elif account_profit == 0:
-                    account = [0,0]  # 持平
+                    account = [0,0,1]  # 持平
             elif self.inventory[0][-1]=='short':
-                holding = [0,1]  # 空單
+                holding = [0,1,0]  # 空單
                 account_profit, price_value, close_value = get_short_account(self.inventory,close,self.commission)
                 if account_profit > 0:
-                    account = [1,0]  # 獲利
+                    account = [1,0,0]  # 獲利
                     #if account_profit / price_value > self.stop_pct:
                     #    account = [1,0,1]  # 大幅獲利
                 elif account_profit < 0:
-                    account = [0,1]  # 虧損
+                    account = [0,1,0]  # 虧損
                     #if account_profit / price_value < -self.stop_pct:
                     #    account = [0,1,1]  # 大幅虧損
                 elif account_profit == 0:
-                    account = [0,0]  # 持平
+                    account = [0,0,1]  # 持平
 
         else:
-            holding = [0,0]  # 空手
-            account = [0,0]  # 持平
+            holding = [0,0,1]  # 空手
+            account = [0,0,1]  # 持平
         
         out = np.array([cash + holding + account])
         out.dtype = 'float64'
