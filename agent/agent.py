@@ -102,9 +102,10 @@ class Agent:
 		self_state = np.zeros((self.batch_size, self.self_feat_shape[-2], self.self_feat_shape[-1]))
 		action, reward, done = [], [], []
 		
+
 		for i in range(self.batch_size):
 			state_inputs[i][:][:] = mini_batch[i][0][0]
-			self_state[i][0] = mini_batch[i][0][1]
+			self_state[i] = mini_batch[i][0][1]
 			action.append(mini_batch[i][1])
 			reward.append(mini_batch[i][2])
 			next_states[i][:][:] = mini_batch[i][3][0]
