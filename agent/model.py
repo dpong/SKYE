@@ -3,7 +3,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Add, Subtract, Lambda, BatchNormalization, concatenate
 from tensorflow.keras.layers import Conv1D, Flatten, MaxPooling1D, GlobalAveragePooling1D, Embedding
 from tensorflow.keras.models import Model
-from agent.noisynet import NoisyDense
+#from agent.noisynet import NoisyDense
 import tensorflow.keras.backend as K
 
 
@@ -17,18 +17,22 @@ class Build_model():
         flat_s1 = Flatten()(s1)
         flat_norm_s1 = BatchNormalization()(flat_s1)
         # 卷積層們，kernel_size為5天，一週的概念
-        con1 = Conv1D(state_size[1], 5, padding='same', activation='elu')(state_input)
-        con2 = Conv1D(state_size[1], 5, padding='same', activation='elu')(con1)
-        con3 = Conv1D(state_size[1], 5, padding='same', activation='elu')(con2)
-        pool_max = MaxPooling1D(pool_size=5, strides=1, padding='same')(con3)
-        flat = Flatten()(pool_max)
+        con1 = Conv1D(state_size[1], 5, padding='causal', activation='elu')(state_input)
+        con1_norm = BatchNormalization()(con1)
+        con2 = Conv1D(state_size[1], 5, padding='causal', activation='elu')(con1_norm)
+        con2_norm = BatchNormalization()(con2)
+        con3 = Conv1D(state_size[1], 5, padding='causal', activation='elu')(con2_norm)
+        con3_norm = BatchNormalization()(con3)
+        pool_max = MaxPooling1D(pool_size=5, strides=1, padding='same')(con3_norm)
+        max_norm = BatchNormalization()(pool_max)
+        flat = Flatten()(max_norm)
         flat_norm = BatchNormalization()(flat)
         # 外插 self_state_input
         connect = concatenate([flat_norm, flat_norm_s1])
         # 連結層
-        n1 = NoisyDense(neurons, activation='elu', Noisy=training)(connect)
+        n1 = Dense(neurons, activation='elu')(connect)
         n1_norm = BatchNormalization()(n1)
-        n2 = NoisyDense(neurons, activation='elu', Noisy=training)(n1_norm)
+        n2 = Dense(neurons, activation='elu')(n1_norm)
         n2_norm = BatchNormalization()(n2)
         # 開始 distribution
         duel_distribution_list_a = []

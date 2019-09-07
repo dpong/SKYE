@@ -34,14 +34,14 @@ class Trading():
                 self._long_new(close, e, episode_count, t, l)
             else:
                 self._hold(close, e, episode_count, t, l) 
-                #self.reward += -0.05
+                self.reward += -0.05
         
         elif action == 1 and len(self.inventory) == 0:
             if self.safe_margin * self.cash > close * unit:
                 self._long_new_empty(close, e, episode_count, t, l)
             else:
                 self._hold(close, e, episode_count, t, l)
-                #self.reward += -0.05
+                self.reward += -0.05
         
         elif action == 2 and len(self.inventory) > 0 and self.inventory[0][-1]=='long':
             self._short_clean(close, e, episode_count, t, l)
@@ -51,14 +51,14 @@ class Trading():
                 self._short_new(close, e, episode_count, t, l)
             else:
                 self._hold(close, e, episode_count, t, l)
-                #self.reward += -0.05
+                self.reward += -0.05
         
         elif action == 2 and len(self.inventory) == 0:
             if self.safe_margin * self.cash > close * unit:
                 self._short_new_empty(close, e, episode_count, t, l)
             else:
                 self._hold(close, e, episode_count, t, l)
-                #self.reward += -0.05
+                self.reward += -0.05
         
         elif action == 3 and len(self.inventory) > 0:
             self._clean_inventory(close, e, episode_count, t, l)

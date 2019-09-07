@@ -27,7 +27,7 @@ class Agent:
 		self.epsilon_min = 0.01
 		self.epsilon_decay = 0.995
 		self.gamma = 0.95
-		self.batch_size = 32
+		self.batch_size = 16
 		self.num_atoms = 51 # for C51
 		self.v_max = 1
 		self.v_min = -1 
@@ -49,7 +49,7 @@ class Agent:
 			self.training = False
 			self.model = self._model('  Model')
 			
-		self.optimizer = tf.optimizers.Adam(learning_rate=0.0000625, epsilon = 0.00015)
+		self.optimizer = tf.optimizers.Adam(learning_rate=0.0000225, epsilon = 0.00015)
 
 
 	def _model(self, model_name):
@@ -72,9 +72,8 @@ class Agent:
 			return random.randrange(self.action_size)
 		p = self._tensor_to_np(self.model([state, self_state]))
 		p_concat = np.vstack(p)
-		q = np.sum(np.multiply(p_concat, np.array(self.z)), axis=1) 
+		q = np.sum(np.multiply(p_concat, np.array(self.z)), axis=1)
 		print(q)
-		
 		action_idx = np.argmax(q)
 		return action_idx
 

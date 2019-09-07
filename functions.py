@@ -6,7 +6,6 @@ from sklearn import preprocessing
 scaler = preprocessing.MinMaxScaler()
 
 
-
 # prints formatted price
 def formatPrice(n):
 	return ("-$" if n < 0 else "$") + "{0:.2f}".format(abs(n))

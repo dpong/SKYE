@@ -63,8 +63,8 @@ for e in range(1, episode_count + 1):
 		if trading.lose_count > trading.max_con_lose:
 			trading.max_con_lose = trading.lose_count
 		done = True if t == l - 1 else False
-		if trading.total_profit <= 0 and done:
-			trading.reward += -1
+		#if trading.total_profit <= 0 and done:
+		#	trading.reward += -1
 
 		if not is_evaluating:
 			agent.append_sample([state, self_state], action, trading.reward, [next_state, self_state], done)
