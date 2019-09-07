@@ -54,6 +54,7 @@ for e in range(1, episode_count + 1):
 		state = getState(data, t, window_size)
 		next_state = getState(data, t + step_n, window_size) 
 		self_state = trading.self_states(data[t+1, n_close])
+
 		action = agent.act(state, self_state)
 		trading.reward = 0
 		#這邊交易的價格用當日的收盤價(t+1)代替，實際交易就是成交價格
@@ -62,6 +63,8 @@ for e in range(1, episode_count + 1):
 		if trading.lose_count > trading.max_con_lose:
 			trading.max_con_lose = trading.lose_count
 		done = True if t == l - 1 else False
+		if trading.total_profit <= 0 and done:
+			trading.reward += -1
 
 		if not is_evaluating:
 			agent.append_sample([state, self_state], action, trading.reward, [next_state, self_state], done)
@@ -78,8 +81,9 @@ for e in range(1, episode_count + 1):
 				agent.model.save_weights(agent.checkpoint_path, save_format='tf')
 				train_count = 0
 				target_update +=1
+				
 			# 5次training後更新target model
-			if target_update == 5 :
+			if target_update == 2 :
 				agent.update_target_model()
 				target_update = 0
 

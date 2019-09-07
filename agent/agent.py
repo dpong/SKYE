@@ -22,10 +22,10 @@ class Agent:
 		self.memory_size = 20000 #記憶長度
 		self.memory = Memory(self.memory_size)
 		self.epsilon = 1
-		self.epsilon_min = 0.01
-		self.epsilon_decay = 0.999
+		self.epsilon_min = 0.1
+		self.epsilon_decay = 0.995
 		self.gamma = 0.95
-		self.batch_size = 64
+		self.batch_size = 128
 		self.epoch_loss_avg = tf.keras.metrics.Mean()
 		self.epochs = 5
 		self.bar = Progbar(self.epochs)
@@ -35,12 +35,14 @@ class Agent:
 		self.check_index = self.checkpoint_path + '.index'   #checkpoint裡面的檔案多加了一個.index
 		
 		if is_eval==False:
+			#self.training = True
 			self.model = self._model('  Model')
 			self.target_model = self._model(' Target')
 		else:
+			#self.training = False
 			self.model = self._model('  Model')
 			
-		self.optimizer = tf.optimizers.Adam(learning_rate=0.00025, epsilon = 0.0003125)
+		self.optimizer = tf.optimizers.Adam(learning_rate=0.0001, epsilon=0.00015)
 		self.loss_function = tf.keras.losses.Huber()
 
 
@@ -53,16 +55,6 @@ class Agent:
 			model.load_weights(self.checkpoint_path)
 		else:
 			print('-'*53+'Create new model!!'+'-'*53)
-		'''
-		if self.is_eval == True:
-			model.get_layer('n1').remove_noise()
-			model.get_layer('a').remove_noise()
-			model.get_layer('value').remove_noise()
-		else:
-			model.get_layer('n1').sample_noise()
-			model.get_layer('a').sample_noise()
-			model.get_layer('value').sample_noise()
-			'''
 		return model
 	
 	# 把model的權重傳給target model
@@ -79,9 +71,10 @@ class Agent:
 	# Prioritized experience replay
 	# save sample (error,<s,a,r,s'>) to the replay memory
 	def append_sample(self, state, action, reward, next_state, done):
-		max_p = np.max(self.memory.tree.tree[-self.memory.capacity:])
-		if max_p == 0:
-			max_p = self.memory.abs_err_upper  # clipped abs error feat 莫煩
+		if not reward == 0:
+			max_p = 1000  #如果有動靜則給超大的
+		else:
+			max_p = 1  # 預設給1
 		self.memory.add(max_p, (state, action, reward, next_state, done))  # set the max p for new p
 
 	# loss function
