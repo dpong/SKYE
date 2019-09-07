@@ -41,7 +41,12 @@ class Build_model():
         # deuling value
         value = Dense(1, activation='linear')(n2_norm)
         # combine
-        q = Add()([value, advantage])
+        q_out = Add()([value, advantage])
+
+        # unit network
+        unit_1 = Dense(action_size, activation='elu')(n2_norm)
+        unit_1_norm = BatchNormalization()(unit_1)
+        unit_out = Dense(1, activation='relu')(unit_1_norm)
 
 
-        return Model(inputs=[state_input, self_state_input], outputs=q)
+        return Model(inputs=[state_input, self_state_input], outputs=[q_out, unit_out])

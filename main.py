@@ -24,18 +24,21 @@ trading = Trading(init_cash)
 trading.print_log = is_evaluating
 profolio = Profolio(init_cash)
 #資料整合轉換
-data = init_data(df, init_cash)
+data, time_data = init_data(df, init_cash)
 # n-step return
 step_n = 1
 #給agent初始化輸入的緯度
 input_shape, neurons = get_shape(data[:window_size], window_size)
 self_state = trading.self_states(data[0,0])
 agent = Agent(ticker, input_shape, self_state.shape, neurons, m_path, is_eval=is_evaluating)
-
+#視覺化用途
+if is_evaluating:
+	trading_record = np.zeros((2,len(data)))
+	
 l = len(data) - step_n
 n_close = 0
-n_cash = -2  #cash資料放data的倒數第二個
-n_holding = -1  #holding資料放data的倒數第一個
+n_cash = -1  #cash資料放data的倒數第一個
+n_holding = -2  #holding資料放data的倒數第二個
 
 if not is_evaluating:
 	target_update = 0  # 每train個幾次就update
@@ -54,11 +57,11 @@ for e in range(1, episode_count + 1):
 		state = getState(data, t, window_size)
 		next_state = getState(data, t + step_n, window_size) 
 		self_state = trading.self_states(data[t+1, n_close])
-
-		action = agent.act(state, self_state)
+		# 輸出action和unit位置
+		action, unit = agent.act(state, self_state)
 		trading.reward = 0
-		#這邊交易的價格用當日的收盤價(t+1)代替，實際交易就是成交價格
-		traded_action = trading.policy(action, data[t+1, n_close], e, episode_count, t, l)
+		# 這邊交易的價格用當日的收盤價(t+1)代替，實際交易就是成交價格
+		traded_action, traded_unit = trading.policy(action, unit, data[t+1, n_close], time_data[t])
 		# 紀錄最大連續虧損
 		if trading.lose_count > trading.max_con_lose:
 			trading.max_con_lose = trading.lose_count
@@ -67,9 +70,12 @@ for e in range(1, episode_count + 1):
 			trading.reward += -1
 
 		if not is_evaluating:
-			agent.append_sample([state, self_state], action, trading.reward, [next_state, self_state], done)
+			agent.append_sample([state, self_state], [traded_action, traded_unit], trading.reward, [next_state, self_state], done)
 			# 紀錄存入多少記憶	
 			train_count += 1
+		else:
+			trading_record[0][t] = traded_action
+			trading_record[1][t] = traded_unit
 		
 		# 更新總 reward
 		trading.total_reward += trading.reward
@@ -118,4 +124,6 @@ for e in range(1, episode_count + 1):
 			+ " | Max Cont Lose: " + str(trading.max_con_lose)
 			+ " | Total Reward: " + str(round(trading.total_reward,2)))
 			print("-"*124)
+			if is_evaluating:
+				visualization(data, time_data, trading_record, round(100 * trading.total_profit / trading.init_cash, 2))
 			

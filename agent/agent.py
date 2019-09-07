@@ -18,6 +18,9 @@ class Agent:
 		self.state_size = state_size # normalized previous days
 		self.self_feat_shape = self_state_shape
 		self.action_size = 4 
+		self.unit_up_limit = 100
+		self.unit_down_limit = 1
+		self.unit_loss_weight = 0.1
 		self.neurons = neurons
 		self.memory_size = 20000 #記憶長度
 		self.memory = Memory(self.memory_size)
@@ -35,11 +38,9 @@ class Agent:
 		self.check_index = self.checkpoint_path + '.index'   #checkpoint裡面的檔案多加了一個.index
 		
 		if is_eval==False:
-			#self.training = True
 			self.model = self._model('  Model')
 			self.target_model = self._model(' Target')
 		else:
-			#self.training = False
 			self.model = self._model('  Model')
 			
 		self.optimizer = tf.optimizers.Adam(learning_rate=0.0001, epsilon=0.00015)
@@ -63,24 +64,37 @@ class Agent:
 
 	def act(self, state, self_state):
 		if not self.is_eval and np.random.rand() <= self.epsilon:
-			return random.randrange(self.action_size)
-		options = self.model([state, self_state])
+			return random.randrange(self.action_size), random.randint(1, self.unit_up_limit)
+		options, unit = self.model([state, self_state])
 		options = options.numpy()
-		return np.argmax(options[0]) # array裡面最大值的位置號
+		unit = unit.numpy()
+		action_out = np.argmax(options[0])  # array裡面最大值的位置號
+		unit_out = int(unit[0][0])
+		if unit_out > self.unit_up_limit:
+			unit_out = self.unit_up_limit
+		if unit_out < self.unit_down_limit:
+			unit_out = self.unit_down_limit
+		return action_out, unit_out
 
 	# Prioritized experience replay
 	# save sample (error,<s,a,r,s'>) to the replay memory
 	def append_sample(self, state, action, reward, next_state, done):
 		if not reward == 0:
-			max_p = 1000  #如果有動靜則給超大的
+			max_p = 100  #如果有動靜則給超大的
 		else:
 			max_p = 1  # 預設給1
 		self.memory.add(max_p, (state, action, reward, next_state, done))  # set the max p for new p
 
 	# loss function
 	def _loss(self, model, x, y):
-		y_ = self.model(x)
-		return self.loss_function(y_true=y, y_pred=y_)
+		q_y = tf.convert_to_tensor(y[0])
+		unit_y = tf.convert_to_tensor(y[1])
+		q_y_, unit_y_ = self.model(x)
+		q_loss = self.loss_function(y_true=q_y, y_pred=q_y_)
+		unit_loss = self.loss_function(y_true=unit_y, y_pred=unit_y_)
+		unit_loss = tf.multiply(unit_loss, self.unit_loss_weight)
+		return tf.add(q_loss, unit_loss)
+
 	# gradient
 	def _grad(self, model, inputs, targets):
 		with tf.GradientTape() as tape:
@@ -93,40 +107,45 @@ class Agent:
 		state_inputs = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
 		next_states = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
 		self_state = np.zeros((self.batch_size, self.self_feat_shape[-2], self.self_feat_shape[-1]))
-		action, reward, done = [], [], []
-		
+		action, unit, reward, done = [], [], [], []
 
 		for i in range(self.batch_size):
-			state_inputs[i][:][:] = mini_batch[i][0][0]
+			state_inputs[i] = mini_batch[i][0][0]
 			self_state[i] = mini_batch[i][0][1]
-			action.append(mini_batch[i][1])
+			action.append(mini_batch[i][1][0])
+			unit.append(mini_batch[i][1][1])
 			reward.append(mini_batch[i][2])
 			next_states[i][:][:] = mini_batch[i][3][0]
 			done.append(mini_batch[i][4])
-		old = []
+		old_q = []
 		# 主model動作
-		result = self.model([state_inputs, self_state])
-		result = result.numpy()
-		next_result = self.model([next_states, self_state])
-		next_result = next_result.numpy()
-		next_action = np.argmax(next_result, axis=1)
+		q_result, unit_result = self.model([state_inputs, self_state])
+		q_result = q_result.numpy()
+		unit_result = unit_result.numpy()
+		# 下一個state
+		q_next_result, unit_next_result = self.model([next_states, self_state])
+		q_next_result = q_next_result.numpy()
+		#unit_next_result = unit_next_result.numpy()
+		next_action = np.argmax(q_next_result, axis=1)
 		# target model動作
-		t_next_result = self.target_model([next_states, self_state])
-		t_next_result = t_next_result.numpy()
+		q_t_next_result, unit_t_next_result = self.target_model([next_states, self_state])
+		q_t_next_result = q_t_next_result.numpy()
+		#unit_t_next_result = unit_t_next_result.numpy()
 		# 更新Q值: Double DQN的概念
 		for i in range(self.batch_size):
-			old.append(result[i][action[i]])
-			result[i][action[i]] = reward[i]
+			old_q.append(q_result[i][action[i]])
+			q_result[i][action[i]] = reward[i]
 			if not done[i]:
-				result[i][action[i]] = result[i][action[i]] + self.gamma * t_next_result[i][next_action[i]]
-			# 計算error給PER
-			error = abs(old[i] - result[i][action[i]])
+				q_result[i][action[i]] = q_result[i][action[i]] + self.gamma * q_t_next_result[i][next_action[i]]
+			# 計算error給PER，unit的權重打折
+			error = abs(old_q[i] - q_result[i][action[i]]) + self.unit_loss_weight * abs(unit[i] - unit_result[i][0]) 
 			error *= is_weights[i]
 			self.memory.update(idxs[i], error)
+			unit_result[i][0] = unit[i]  # 更新回array裡
 
 		# train model
 		for i in range(self.epochs):
-			loss_value, grads = self._grad(self.model, [state_inputs,self_state], result)
+			loss_value, grads = self._grad(self.model, [state_inputs, self_state], [q_result, unit_result])
 			self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables),
 				get_or_create_global_step())
 			self.epoch_loss_avg(loss_value)
