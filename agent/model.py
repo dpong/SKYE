@@ -35,18 +35,22 @@ class Build_model():
         n2 = Dense(neurons, activation='elu')(n1_norm)
         n2_norm = BatchNormalization()(n2)
         # deuling advantage
-        a = Dense(action_size, activation='linear')(n2_norm)
+        n3_a = Dense(neurons/2, activation='elu')(n2_norm)
+        n3_a_norm = BatchNormalization()(n3_a)
+        a = Dense(action_size, activation='linear')(n3_a_norm)
         a_mean = Lambda(lambda x: K.mean(x, axis=1, keepdims=True))(a)
         advantage = Subtract()([a, a_mean])
         # deuling value
-        value = Dense(1, activation='linear')(n2_norm)
-        # combine
+        n3_v = Dense(neurons/2, activation='elu')(n2_norm)
+        n3_v_norm = BatchNormalization()(n3_v)
+        value = Dense(1, activation='linear')(n3_v_norm)
+        # dueling combine
         q_out = Add()([value, advantage])
-
         # unit network
-        unit_1 = Dense(action_size, activation='elu')(n2_norm)
+        unit_1 = Dense(neurons/2, activation='elu')(n2_norm)
         unit_1_norm = BatchNormalization()(unit_1)
-        unit_out = Dense(1, activation='relu')(unit_1_norm)
-
+        unit_2 = Dense(action_size, activation='elu')(unit_1_norm)
+        unit_2_norm = BatchNormalization()(unit_2)
+        unit_out = Dense(1, activation='relu')(unit_2_norm)
 
         return Model(inputs=[state_input, self_state_input], outputs=[q_out, unit_out])

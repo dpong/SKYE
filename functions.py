@@ -1,6 +1,6 @@
 import numpy as np
 import random, math
-#import pandas_datareader as pdr
+import pandas_datareader as pdr
 import pandas as pd
 from sklearn import preprocessing
 scaler = preprocessing.MinMaxScaler()
@@ -26,18 +26,24 @@ def get_shape(data,window_size):
 
 #取得歷史資料
 def get_data(ticker, start, end):
+	# pandas datareader
 	#df = pdr.DataReader('{}'.format(ticker),'yahoo', start=start, end=end)
-	df = pd.read_csv('{}_stock_price_train.csv'.format(ticker))
+	#df.reset_index(level=0, inplace=True)
+	#df['Date']=df['Date'].apply(str)
+	# csv file
+	#df = pd.read_csv('data/{}_stock_price_train_short.csv'.format(ticker))
+	df = pd.read_csv('data/day_{}_200_data.csv'.format(ticker))
 	return df
 
 #初始化輸入資料
 def init_data(df, init_cash):
-	df['shift_close'] = df['Close'].shift(1)   #交易的時候，只知道昨天的收盤價
+	df['shift_open'] = df['Open'].shift(-1)   #交易的時候，只知道今天的開盤價
 	df.dropna(how='any',inplace=True)
 	df['Cash'] = init_cash
 	df['Holding'] = 0
+	df['Return Ratio'] = 0
 	df_time = df['Date']
-	data = df[['shift_close','Open','High','Low','Volume','Holding','Cash']].values
+	data = df[['Close','shift_open','High','Low','Volume','Return Ratio','Holding','Cash']].values
 	time_data = df_time.values
 	return data, time_data
 
@@ -73,7 +79,7 @@ def get_inventory_units(inventory):
 	value_sum = 0
 	for order in inventory:
 		value_sum += order[2]
-	return value_sum
+	return int(value_sum)
 
 # 把 inventory 換算成一個
 def inventory_ensemble(inventory): 
@@ -87,11 +93,11 @@ def inventory_ensemble(inventory):
 	avg_price = value_sum[1] / value_sum[2]  # avg price
 	return [[avg_close, avg_price, value_sum[2], order_type]]
 
-def visualization(data, time_data, trading_record, return_ratio):
+def visualization(data, time_data, trading_record):
 	import matplotlib.pyplot as plt
 	from datetime import datetime
 	df = pd.DataFrame(data)
-	df.rename(columns={0:"Close", 1:"Open", 2:'High', 3:"Low", 4:"Volume", 5:"Cash", 6:"Holding"}, inplace=True)
+	df.rename(columns={0:"Close", 1:"Shift Open", 2:'High', 3:"Low", 4:"Volume", 5:'Return Ratio', 5:"Holding", 6:"Cash"}, inplace=True)
 	df['Date'] = pd.DataFrame(time_data)
 	df['Action'] = pd.DataFrame(trading_record[0])
 	df['Trade Unit'] = pd.DataFrame(trading_record[1])
@@ -101,7 +107,7 @@ def visualization(data, time_data, trading_record, return_ratio):
 	plt.title("Results from " + start[:10] + " to " + end[:10]) 
 	plt.xlabel("Date") 
 	plt.ylabel("Close")
-	plt.plot(df['Date'], df['Close'],color='blue')
+	plt.plot(df['Date'], df['Close'],color='blue', alpha=0.5)
 	plt.scatter(df.loc[df['Action'] ==1 , 'Date'].values, df.loc[df['Action'] ==1, 'Close'].values,
 		label='skitscat', color='green', s=20, marker="^")
 	plt.scatter(df.loc[df['Action'] ==2 , 'Date'].values, df.loc[df['Action'] ==2, 'Close'].values,
@@ -111,6 +117,11 @@ def visualization(data, time_data, trading_record, return_ratio):
 	plt.xticks(())
 	plt.show()
 
+if __name__=='__main__':
+	df = get_data('TSLA', '2019-1-1', None)
+	
+	print(type(df.at[0,'Date']))
+	#print(df.head())
 
 
 	

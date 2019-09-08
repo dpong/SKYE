@@ -1,7 +1,7 @@
 from functions import *
 from profolio import *
-import numpy as np
 from tensorflow.keras.utils import to_categorical
+import numpy as np
 
 class Trading():
     def __init__(self,init_cash):
@@ -11,7 +11,7 @@ class Trading():
         self.reward = 0
         self.commission = 0.003  #千分之三的手續費
         self.stop_pct = 0.1  #停損%數
-        self.pr_ratio = 5  #獲利/風險給reward的比例，讓agent趨向報酬會是規避風險
+        self.pr_ratio = 2  #獲利/風險給reward的比例，讓agent趨向報酬會是規避風險
         self.init_cash = init_cash
         self.cash = init_cash
         self.inventory = []  #存入價格資訊：close, price, units, 動作(多，空單)
@@ -23,9 +23,19 @@ class Trading():
         self.max_con_lose = 0
         self.print_log = False
 
-    def policy(self, action, unit, close, current_time):
+    def _unit_adjust(self, value, close, unit_seed):   # seed最大是10，最小是1
+        up_limit_unit = int((value / 5) / close)   # 最大出手就是20%的總資產
+        if up_limit_unit < 10:
+            up_limit_unit = int(value / close) 
+            if up_limit_unit < 10:
+                # 現金不夠分散unit
+                return 1
+        return int(unit_seed * up_limit_unit / 10)
+
+    def policy(self, action, unit_seed, close, current_time):
         self.profolio.total_value(close, self.cash, self.inventory, self.commission)
-        self.unit = unit
+        self.unit = self._unit_adjust(self.cash, close, unit_seed)
+        
         if action == 1 and len(self.inventory) > 0 and self.inventory[0][-1]=='short':
             self._long_clean(close, current_time)
         
@@ -36,6 +46,7 @@ class Trading():
                 self._hold(close, current_time) 
                 self.reward += -0.05
                 self.unit = 0
+                unit_seed = 0
         
         elif action == 1 and len(self.inventory) == 0:
             if self.safe_margin * self.cash > close * self.unit:
@@ -44,6 +55,7 @@ class Trading():
                 self._hold(close, current_time)
                 self.reward += -0.05
                 self.unit = 0
+                unit_seed = 0
         
         elif action == 2 and len(self.inventory) > 0 and self.inventory[0][-1]=='long':
             self._short_clean(close, current_time)
@@ -55,6 +67,7 @@ class Trading():
                 self._hold(close, current_time)
                 self.reward += -0.05
                 self.unit = 0
+                unit_seed = 0
         
         elif action == 2 and len(self.inventory) == 0:
             if self.safe_margin * self.cash > close * self.unit:
@@ -63,32 +76,36 @@ class Trading():
                 self._hold(close, current_time)
                 self.reward += -0.05
                 self.unit = 0
+                unit_seed = 0
         
         elif action == 3 and len(self.inventory) > 0:
             self._clean_inventory(close, current_time)
             self.unit = 0
+            unit_seed = 0
         
         elif action == 3 and len(self.inventory) == 0:
             self._hold(close, current_time)
             self.reward += -0.05
             self.unit = 0
+            unit_seed = 0
         
         if action == 0: #不動作
             self._hold(close, current_time)
             self.unit = 0
+            unit_seed = 0
        
         # 整合inventory，方便運算
         if len(self.inventory) > 1:
             self.inventory = inventory_ensemble(self.inventory)
 
-        return action, self.unit
+        return action, self.unit, unit_seed
 
 
     def _hold(self, close, current_time):
         if len(self.inventory) > 0:
             if self.inventory[0][-1] == 'long':
                 account_profit, price_value, close_value = get_long_account(self.inventory,close,self.commission)
-                value_diff = (account_profit - self.highest_value[0]) / price_value
+                #value_diff = (account_profit - self.highest_value[0]) / price_value
                 if account_profit > self.highest_value[0]: 
                     self.highest_value[0] = account_profit
                 #elif value_diff <= -self.stop_pct and self.highest_value[0] > 0:  #帳面獲利減少的懲罰
@@ -103,7 +120,7 @@ class Trading():
                 self.highest_value[1] = 0
             else:
                 account_profit, price_value, close_value = get_short_account(self.inventory,close,self.commission)
-                value_diff = (account_profit - self.highest_value[1]) / price_value
+                #value_diff = (account_profit - self.highest_value[1]) / price_value
                 if account_profit > self.highest_value[1]: 
                     self.highest_value[1] = account_profit
                 #elif value_diff <= -self.stop_pct and self.highest_value[1] > 0:  #帳面獲利減少的懲罰
@@ -153,7 +170,7 @@ class Trading():
             
     def _long_new(self, close, current_time):
         account_profit, price_value, close_value = get_long_account(self.inventory,close,self.commission)
-        value_diff = (account_profit - self.highest_value[0]) / price_value
+        #value_diff = (account_profit - self.highest_value[0]) / price_value
         if account_profit > self.highest_value[0]: 
             self.highest_value[0] = account_profit
         #elif value_diff <= -self.stop_pct and self.highest_value[0] > 0:  #帳面獲利減少的懲罰
@@ -215,7 +232,7 @@ class Trading():
 
     def _short_new(self, close, current_time):
         account_profit, price_value, close_value = get_short_account(self.inventory,close,self.commission)
-        value_diff = (account_profit - self.highest_value[1]) / price_value
+        #value_diff = (account_profit - self.highest_value[1]) / price_value
         if account_profit > self.highest_value[1]: 
             self.highest_value[1] = account_profit
         #elif value_diff <= -self.stop_pct and self.highest_value[1] > 0:  #帳面獲利減少的懲罰

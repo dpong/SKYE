@@ -11,7 +11,7 @@ if len(sys.argv) != 5:
 	exit()
 
 ticker, window_size, episode_count, is_evaluating = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), strtobool(sys.argv[4])
-init_cash = 1000000
+init_cash = 10000000
 #要給checkpoint個路徑
 #c_path = "models/{}/training.ckpt".format(ticker)
 m_path = "models/{}/model_weights".format(ticker)
@@ -31,19 +31,20 @@ step_n = 1
 input_shape, neurons = get_shape(data[:window_size], window_size)
 self_state = trading.self_states(data[0,0])
 agent = Agent(ticker, input_shape, self_state.shape, neurons, m_path, is_eval=is_evaluating)
-#視覺化用途
-if is_evaluating:
-	trading_record = np.zeros((2,len(data)))
-	
 l = len(data) - step_n
 n_close = 0
 n_cash = -1  #cash資料放data的倒數第一個
 n_holding = -2  #holding資料放data的倒數第二個
+n_return_ratio = -3  #return ratio資料放data的倒數第三個
 
 if not is_evaluating:
 	target_update = 0  # 每train個幾次就update
 	train_count = 0
+	memory_heatup = agent.batch_size * 5  # 預先跑個幾輪亂數，再來依照權重學習
+else:
+	trading_record = np.zeros((2,len(data)))  #視覺化用途
 
+# 開始
 for e in range(1, episode_count + 1):
 	trading.total_profit, trading.cash, trading.total_reward = 0, init_cash, 0
 	trading.inventory = []
@@ -58,19 +59,22 @@ for e in range(1, episode_count + 1):
 		next_state = getState(data, t + step_n, window_size) 
 		self_state = trading.self_states(data[t+1, n_close])
 		# 輸出action和unit位置
-		action, unit = agent.act(state, self_state)
+		action, unit_seed = agent.act(state, self_state)
 		trading.reward = 0
 		# 這邊交易的價格用當日的收盤價(t+1)代替，實際交易就是成交價格
-		traded_action, traded_unit = trading.policy(action, unit, data[t+1, n_close], time_data[t])
+		traded_action, traded_unit, unit_seed = trading.policy(action, unit_seed, data[t+1, n_close], time_data[t])
 		# 紀錄最大連續虧損
 		if trading.lose_count > trading.max_con_lose:
 			trading.max_con_lose = trading.lose_count
 		done = True if t == l - 1 else False
-		if trading.total_profit <= 0 and done:
+		# 計算的時候給大reward
+		if trading.total_profit / trading.init_cash <= 0.05 and done:
 			trading.reward += -1
+		elif trading.total_profit / trading.init_cash > 0.05 and done:
+			trading.reward += 1
 
-		if not is_evaluating:
-			agent.append_sample([state, self_state], [traded_action, traded_unit], trading.reward, [next_state, self_state], done)
+		if not is_evaluating:   # unit存入seed而不是調整後的
+			agent.append_sample([state, self_state], [traded_action, unit_seed], trading.reward, [next_state, self_state], done)
 			# 紀錄存入多少記憶	
 			train_count += 1
 		else:
@@ -81,14 +85,15 @@ for e in range(1, episode_count + 1):
 		trading.total_reward += trading.reward
 		
 		if not is_evaluating:
-			# 動作一定次數才會訓練，然後存權重
-			if train_count > agent.batch_size:
+			# 動作一定次數才會訓練
+			if train_count > agent.batch_size and train_count > memory_heatup:
 				agent.train_model()
 				agent.model.save_weights(agent.checkpoint_path, save_format='tf')
 				train_count = 0
+				memory_heatup = 0  # 一開始heatup後就歸0，不再作用
 				target_update +=1
 				
-			# 5次training後更新target model
+			# 多次training後更新target model
 			if target_update == 2 :
 				agent.update_target_model()
 				target_update = 0
@@ -98,6 +103,7 @@ for e in range(1, episode_count + 1):
 		
 		#本次動作回饋到下一個的data裡
 		data[t+1,n_cash] = trading.cash
+		data[t+1,n_return_ratio] = trading.total_profit / trading.init_cash
 		if len(trading.inventory) > 0:
 			data[t+1,n_holding] = get_inventory_value(trading.inventory, data[t+1, n_close], trading.commission)
 		else:
@@ -125,5 +131,5 @@ for e in range(1, episode_count + 1):
 			+ " | Total Reward: " + str(round(trading.total_reward,2)))
 			print("-"*124)
 			if is_evaluating:
-				visualization(data, time_data, trading_record, round(100 * trading.total_profit / trading.init_cash, 2))
+				visualization(data, time_data, trading_record)
 			

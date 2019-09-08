@@ -18,9 +18,9 @@ class Agent:
 		self.state_size = state_size # normalized previous days
 		self.self_feat_shape = self_state_shape
 		self.action_size = 4 
-		self.unit_up_limit = 100
+		self.unit_up_limit = 10
 		self.unit_down_limit = 1
-		self.unit_loss_weight = 0.1
+		self.unit_loss_weight = 0.1/self.unit_up_limit
 		self.neurons = neurons
 		self.memory_size = 20000 #記憶長度
 		self.memory = Memory(self.memory_size)
@@ -36,14 +36,12 @@ class Agent:
 		self.checkpoint_path = m_path
 		self.checkpoint_dir = os.path.dirname(self.checkpoint_path)
 		self.check_index = self.checkpoint_path + '.index'   #checkpoint裡面的檔案多加了一個.index
-		
 		if is_eval==False:
 			self.model = self._model('  Model')
 			self.target_model = self._model(' Target')
 		else:
 			self.model = self._model('  Model')
-			
-		self.optimizer = tf.optimizers.Adam(learning_rate=0.0001, epsilon=0.00015)
+		self.optimizer = tf.optimizers.Adam(learning_rate=0.0001, epsilon=0.000025)
 		self.loss_function = tf.keras.losses.Huber()
 
 
@@ -69,20 +67,20 @@ class Agent:
 		options = options.numpy()
 		unit = unit.numpy()
 		action_out = np.argmax(options[0])  # array裡面最大值的位置號
-		unit_out = int(unit[0][0])
-		if unit_out > self.unit_up_limit:
-			unit_out = self.unit_up_limit
-		if unit_out < self.unit_down_limit:
-			unit_out = self.unit_down_limit
-		return action_out, unit_out
+		unit_seed = int(unit[0][0])
+		if unit_seed > self.unit_up_limit:
+			unit_seed = int(self.unit_up_limit)
+		if unit_seed < self.unit_down_limit:
+			unit_seed = int(self.unit_down_limit)
+		return action_out, unit_seed
 
 	# Prioritized experience replay
 	# save sample (error,<s,a,r,s'>) to the replay memory
 	def append_sample(self, state, action, reward, next_state, done):
-		if not reward == 0:
-			max_p = 100  #如果有動靜則給超大的
+		if reward != 0:
+			max_p = 100 + reward  # 有reward的記憶給大的priority
 		else:
-			max_p = 1  # 預設給1
+			max_p = 10  # 預設給10
 		self.memory.add(max_p, (state, action, reward, next_state, done))  # set the max p for new p
 
 	# loss function
