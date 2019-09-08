@@ -57,12 +57,12 @@ for e in range(1, episode_count + 1):
 	for t in range(window_size, l):         #前面的資料要來預熱一下
 		state = getState(data, t, window_size)
 		next_state = getState(data, t + step_n, window_size) 
-		self_state = trading.self_states(data[t+1, n_close])
+		self_state = trading.self_states(data[t, n_close])
 		# 輸出action和unit位置
 		action, unit_seed = agent.act(state, self_state)
 		trading.reward = 0
-		# 這邊交易的價格用當日的收盤價(t+1)代替，實際交易就是成交價格
-		traded_action, traded_unit, unit_seed = trading.policy(action, unit_seed, data[t+1, n_close], time_data[t])
+		# 這邊交易的價格用當日的收盤價代替，實際交易就是成交價格
+		traded_action, traded_unit, unit_seed = trading.policy(action, unit_seed, data[t, n_close], time_data[t])
 		# 紀錄最大連續虧損
 		if trading.lose_count > trading.max_con_lose:
 			trading.max_con_lose = trading.lose_count
@@ -99,13 +99,13 @@ for e in range(1, episode_count + 1):
 				target_update = 0
 
 		#計算max drawdown
-		profolio.eval_draw_down(data[t+1, n_close], trading.cash, trading.inventory, trading.commission)
+		profolio.eval_draw_down(data[t, n_close], trading.cash, trading.inventory, trading.commission)
 		
-		#本次動作回饋到下一個的data裡
+		# 本次動作回饋到下一個的data裡，紀錄起來
 		data[t+1,n_cash] = trading.cash
 		data[t+1,n_return_ratio] = trading.total_profit / trading.init_cash
 		if len(trading.inventory) > 0:
-			data[t+1,n_holding] = get_inventory_value(trading.inventory, data[t+1, n_close], trading.commission)
+			data[t+1,n_holding] = get_inventory_value(trading.inventory, data[t, n_close], trading.commission)
 		else:
 			data[t+1,n_holding] = 0 
 

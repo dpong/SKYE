@@ -12,9 +12,9 @@ def formatPrice(n):
 
 # returns an n-day state representation ending at time t
 def getState(data, t, n):
-	handle = data[t-n:t,:-1]  # 避開Date
+	handle = data[t-n:t,:-3]  # 後面三個資料不看
 	out = scaler.fit_transform(handle)  
-	out = np.array([out])  #修正input形狀
+	out = np.array([out])  # 修正input形狀
 	out.dtype = 'float64'
 	return out
 
@@ -37,12 +37,14 @@ def get_data(ticker, start, end):
 
 #初始化輸入資料
 def init_data(df, init_cash):
-	df['shift_open'] = df['Open'].shift(-1)   #交易的時候，只知道今天的開盤價
+	df['shift_open'] = df['Open'].shift(-1)   # 交易的時候，只知道今天的開盤價
 	df.dropna(how='any',inplace=True)
 	df['Cash'] = init_cash
 	df['Holding'] = 0
 	df['Return Ratio'] = 0
 	df_time = df['Date']
+	df_time = df_time.shift(-1)
+	df_time.dropna(how='any',inplace=True)
 	data = df[['Close','shift_open','High','Low','Volume','Return Ratio','Holding','Cash']].values
 	time_data = df_time.values
 	return data, time_data
@@ -119,7 +121,6 @@ def visualization(data, time_data, trading_record):
 
 if __name__=='__main__':
 	df = get_data('TSLA', '2019-1-1', None)
-	
 	print(type(df.at[0,'Date']))
 	#print(df.head())
 

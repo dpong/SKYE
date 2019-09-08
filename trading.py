@@ -33,7 +33,6 @@ class Trading():
         return int(unit_seed * up_limit_unit / 10)
 
     def policy(self, action, unit_seed, close, current_time):
-        self.profolio.total_value(close, self.cash, self.inventory, self.commission)
         self.unit = self._unit_adjust(self.cash, close, unit_seed)
         
         if action == 1 and len(self.inventory) > 0 and self.inventory[0][-1]=='short':
@@ -178,7 +177,6 @@ class Trading():
         elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
             self.reward = account_profit / price_value
         price = close * (1+self.commission)
-        self.profolio.total_value(close, self.cash, self.inventory, self.commission)
         cost = close * self.unit
         self.cash -= cost
         self.inventory.append([close, price, self.unit, 'long']) #存入進場資訊
@@ -192,7 +190,6 @@ class Trading():
 
     def _long_new_empty(self, close, current_time):
         price = close * (1+self.commission)
-        self.profolio.total_value(close, self.cash, self.inventory, self.commission)
         cost = close * self.unit
         self.cash -= cost
         self.inventory.append([close, price, self.unit, 'long']) #存入進場資訊
@@ -240,7 +237,6 @@ class Trading():
         elif account_profit / price_value < -self.stop_pct:  #帳損超過的懲罰
             self.reward = account_profit / price_value
         price = close * (1-self.commission)
-        self.profolio.total_value(close, self.cash, self.inventory, self.commission)
         cost = close * self.unit #做空一樣要付出成本，保證金的概念
         self.cash -= cost
         self.inventory.append([close, price, self.unit, 'short']) #存入進場資訊
@@ -254,7 +250,6 @@ class Trading():
     
     def _short_new_empty(self, close, current_time):
         price = close * (1 - self.commission)
-        self.profolio.total_value(close, self.cash, self.inventory, self.commission)
         cost = close * self.unit #做空一樣要付出成本，保證金的概念
         self.cash -= cost
         self.inventory.append([close, price, self.unit,'short']) #存入進場資訊
@@ -299,17 +294,20 @@ class Trading():
     
     # 自身狀態的label
     def self_states(self, close):
+        # 更新profolio狀態
+        self.profolio.total_value(close, self.cash, self.inventory, self.commission)
         output = np.zeros((1,4), dtype='float64')  
-        '''現金狀態，持倉狀態，帳面狀態，帳面是否超標
+        '''現金狀態，持倉狀態，帳面狀態，帳面是否超標，
              0     1      2     3
         0   沒錢   空手   持平   正常 
         1   有錢   多單   賺錢   超標
         2   空著   空單   賠錢   超標2   
         '''
-        if self.safe_margin * self.cash >= close * 5:   # 判斷現金，目前最大unit是5
+        if self.cash >= (1-self.safe_margin) * self.profolio.profolio_value:
             output[0,0] = 1  # 足夠現金
-        elif self.safe_margin * self.cash < close * 5:
+        elif self.cash < (1-self.safe_margin) * self.profolio.profolio_value:
             output[0,0] = 0  # 不夠現金
+
         if len(self.inventory) > 0 :  # 持倉
             if self.inventory[0][-1]=='long':
                 output[0,1] = 1  # 多單
