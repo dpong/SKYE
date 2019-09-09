@@ -23,17 +23,12 @@ class Trading():
         self.max_con_lose = 0
         self.print_log = False
 
-    def _unit_adjust(self, value, close, unit_seed):   # seed最大是10，最小是1
-        up_limit_unit = int((value / 5) / close)   # 最大出手就是20%的總資產
-        if up_limit_unit < 10:
-            up_limit_unit = int(value / close) 
-            if up_limit_unit < 10:
-                # 現金不夠分散unit
-                return 1
-        return int(unit_seed * up_limit_unit / 10)
+    def _unit_adjust(self, value, close):   
+        up_limit_unit = int((value / 10) / close)   # 出手就是10%的總資產
+        return up_limit_unit
 
-    def policy(self, action, unit_seed, close, current_time):
-        self.unit = self._unit_adjust(self.cash, close, unit_seed)
+    def policy(self, action, close, current_time):
+        self.unit = self._unit_adjust(self.cash, close)
         
         if action == 1 and len(self.inventory) > 0 and self.inventory[0][-1]=='short':
             self._long_clean(close, current_time)
@@ -45,8 +40,7 @@ class Trading():
                 self._hold(close, current_time) 
                 self.reward += -0.05
                 self.unit = 0
-                unit_seed = 0
-        
+                
         elif action == 1 and len(self.inventory) == 0:
             if self.safe_margin * self.cash > close * self.unit:
                 self._long_new_empty(close, current_time)
@@ -54,7 +48,6 @@ class Trading():
                 self._hold(close, current_time)
                 self.reward += -0.05
                 self.unit = 0
-                unit_seed = 0
         
         elif action == 2 and len(self.inventory) > 0 and self.inventory[0][-1]=='long':
             self._short_clean(close, current_time)
@@ -66,7 +59,6 @@ class Trading():
                 self._hold(close, current_time)
                 self.reward += -0.05
                 self.unit = 0
-                unit_seed = 0
         
         elif action == 2 and len(self.inventory) == 0:
             if self.safe_margin * self.cash > close * self.unit:
@@ -75,29 +67,25 @@ class Trading():
                 self._hold(close, current_time)
                 self.reward += -0.05
                 self.unit = 0
-                unit_seed = 0
         
         elif action == 3 and len(self.inventory) > 0:
             self._clean_inventory(close, current_time)
             self.unit = 0
-            unit_seed = 0
         
         elif action == 3 and len(self.inventory) == 0:
             self._hold(close, current_time)
             self.reward += -0.05
             self.unit = 0
-            unit_seed = 0
         
         if action == 0: #不動作
             self._hold(close, current_time)
             self.unit = 0
-            unit_seed = 0
        
         # 整合inventory，方便運算
         if len(self.inventory) > 1:
             self.inventory = inventory_ensemble(self.inventory)
 
-        return action, self.unit, unit_seed
+        return action, self.unit
 
 
     def _hold(self, close, current_time):

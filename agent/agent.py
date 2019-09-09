@@ -18,9 +18,6 @@ class Agent:
 		self.state_size = state_size # normalized previous days
 		self.self_feat_shape = self_state_shape
 		self.action_size = 4 
-		self.unit_up_limit = 10
-		self.unit_down_limit = 1
-		self.unit_loss_weight = 0.1/self.unit_up_limit
 		self.neurons = neurons
 		self.memory_size = 20000 #記憶長度
 		self.memory = Memory(self.memory_size)
@@ -62,17 +59,11 @@ class Agent:
 
 	def act(self, state, self_state):
 		if not self.is_eval and np.random.rand() <= self.epsilon:
-			return random.randrange(self.action_size), random.randint(self.unit_down_limit, self.unit_up_limit)
-		options, unit = self.model([state, self_state])
+			return random.randrange(self.action_size)
+		options = self.model([state, self_state])
 		options = options.numpy()
-		unit = unit.numpy()
 		action_out = np.argmax(options[0])  # array裡面最大值的位置號
-		unit_seed = int(unit[0][0])
-		if unit_seed > self.unit_up_limit:
-			unit_seed = int(self.unit_up_limit)
-		if unit_seed < self.unit_down_limit:
-			unit_seed = int(self.unit_down_limit)
-		return action_out, unit_seed
+		return action_out
 
 	# Prioritized experience replay
 	# save sample (error,<s,a,r,s'>) to the replay memory
@@ -85,13 +76,8 @@ class Agent:
 
 	# loss function
 	def _loss(self, model, x, y):
-		q_y = tf.convert_to_tensor(y[0])
-		unit_y = tf.convert_to_tensor(y[1])
-		q_y_, unit_y_ = self.model(x)
-		q_loss = self.loss_function(y_true=q_y, y_pred=q_y_)
-		unit_loss = self.loss_function(y_true=unit_y, y_pred=unit_y_)
-		unit_loss = tf.multiply(unit_loss, self.unit_loss_weight)
-		return tf.add(q_loss, unit_loss)
+		y_ = self.model(x)
+		return self.loss_function(y_true=y, y_pred=y_)
 
 	# gradient
 	def _grad(self, model, inputs, targets):
@@ -105,45 +91,40 @@ class Agent:
 		state_inputs = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
 		next_states = np.zeros((self.batch_size,self.state_size[0],self.state_size[1]))
 		self_state = np.zeros((self.batch_size, self.self_feat_shape[-2], self.self_feat_shape[-1]))
-		action, unit, reward, done = [], [], [], []
+		action, reward, done = [], [], []
 
 		for i in range(self.batch_size):
 			state_inputs[i] = mini_batch[i][0][0]
 			self_state[i] = mini_batch[i][0][1]
 			action.append(mini_batch[i][1][0])
-			unit.append(mini_batch[i][1][1])
 			reward.append(mini_batch[i][2])
 			next_states[i][:][:] = mini_batch[i][3][0]
 			done.append(mini_batch[i][4])
 		old_q = []
 		# 主model動作
-		q_result, unit_result = self.model([state_inputs, self_state])
+		q_result = self.model([state_inputs, self_state])
 		q_result = q_result.numpy()
-		unit_result = unit_result.numpy()
 		# 下一個state
-		q_next_result, unit_next_result = self.model([next_states, self_state])
+		q_next_result = self.model([next_states, self_state])
 		q_next_result = q_next_result.numpy()
-		#unit_next_result = unit_next_result.numpy()
 		next_action = np.argmax(q_next_result, axis=1)
 		# target model動作
-		q_t_next_result, unit_t_next_result = self.target_model([next_states, self_state])
+		q_t_next_result = self.target_model([next_states, self_state])
 		q_t_next_result = q_t_next_result.numpy()
-		#unit_t_next_result = unit_t_next_result.numpy()
 		# 更新Q值: Double DQN的概念
 		for i in range(self.batch_size):
 			old_q.append(q_result[i][action[i]])
 			q_result[i][action[i]] = reward[i]
 			if not done[i]:
 				q_result[i][action[i]] = q_result[i][action[i]] + self.gamma * q_t_next_result[i][next_action[i]]
-			# 計算error給PER，unit的權重打折
-			error = abs(old_q[i] - q_result[i][action[i]]) + self.unit_loss_weight * abs(unit[i] - unit_result[i][0]) 
+			# 計算error給PER
+			error = abs(old_q[i] - q_result[i][action[i]]) 
 			error *= is_weights[i]
 			self.memory.update(idxs[i], error)
-			unit_result[i][0] = unit[i]  # 更新回array裡
 
 		# train model
 		for i in range(self.epochs):
-			loss_value, grads = self._grad(self.model, [state_inputs, self_state], [q_result, unit_result])
+			loss_value, grads = self._grad(self.model, [state_inputs, self_state], q_result)
 			self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables),
 				get_or_create_global_step())
 			self.epoch_loss_avg(loss_value)

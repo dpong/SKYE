@@ -65,11 +65,6 @@ class Build_model():
         value = Dense(1, activation='linear')(drop4_v)
         # dueling combine
         q_out = Add()([value, advantage])
-        # unit network
-        unit_1 = Dense(action_size)(drop3)
-        unit_1_norm = BatchNormalization()(unit_1)
-        unit_1_norm_act = Activation('elu')(unit_1_norm)
-        drop4_unit = Dropout(0.2)(unit_1_norm_act)
-        unit_out = Dense(1, activation='relu')(drop4_unit)
+        
 
-        return Model(inputs=[state_input, self_state_input], outputs=[q_out, unit_out])
+        return Model(inputs=[state_input, self_state_input], outputs=q_out)

@@ -58,11 +58,11 @@ for e in range(1, episode_count + 1):
 		state = getState(data, t, window_size)
 		next_state = getState(data, t + step_n, window_size) 
 		self_state = trading.self_states(data[t, n_close])
-		# 輸出action和unit位置
-		action, unit_seed = agent.act(state, self_state)
+		# 輸出action的位置
+		action = agent.act(state, self_state)
 		trading.reward = 0
 		# 這邊交易的價格用當日的收盤價代替，實際交易就是成交價格
-		traded_action, traded_unit, unit_seed = trading.policy(action, unit_seed, data[t, n_close], time_data[t])
+		traded_action, traded_unit = trading.policy(action, data[t, n_close], time_data[t])
 		# 紀錄最大連續虧損
 		if trading.lose_count > trading.max_con_lose:
 			trading.max_con_lose = trading.lose_count
@@ -73,8 +73,8 @@ for e in range(1, episode_count + 1):
 		elif trading.total_profit / trading.init_cash > 0.05 and done:
 			trading.reward += 1
 
-		if not is_evaluating:   # unit存入seed而不是調整後的
-			agent.append_sample([state, self_state], [traded_action, unit_seed], trading.reward, [next_state, self_state], done)
+		if not is_evaluating: 
+			agent.append_sample([state, self_state], traded_action, trading.reward, [next_state, self_state], done)
 			# 紀錄存入多少記憶	
 			train_count += 1
 		else:
