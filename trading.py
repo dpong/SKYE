@@ -11,7 +11,7 @@ class Trading():
         self.reward = 0
         self.commission = 0.003  #千分之三的手續費
         self.stop_pct = 0.1  #停損%數
-        self.pr_ratio = 2  #獲利/風險給reward的比例，讓agent趨向報酬會是規避風險
+        self.pr_ratio = 1.5  #獲利/風險給reward的比例，讓agent趨向報酬會是規避風險
         self.init_cash = init_cash
         self.cash = init_cash
         self.inventory = []  #存入價格資訊：close, price, units, 動作(多，空單)
@@ -296,65 +296,127 @@ class Trading():
     def self_states(self, close):
         # 更新profolio狀態
         self.profolio.total_value(close, self.cash, self.inventory, self.commission)
-        output = np.zeros((1,4), dtype='float64')  
-        '''現金狀態，持倉狀態，帳面狀態，帳面是否超標，
-             0     1      2     3
-        0   沒錢   空手   持平   正常 
-        1   有錢   多單   賺錢   超標
-        2   空著   空單   賠錢   超標2   
+        output = np.zeros((1,5), dtype='float64')  
+        '''現金狀態，持倉狀態，持倉水位，帳面狀態，帳面是否超標，整體獲利狀態，獲利超標
+             0     1      2     3      4     5     6
+        0   沒錢   空手   空手   持平   正常   持平   正常 
+        1   有錢   多單   10%   賺錢   超標   賺錢   超標
+        2         空單   30%   賠錢   超標2  賠錢   超標2   
+        3                50%         超標3        超標3 
+        4                70%         超標4        超標4
         '''
         if self.cash >= (1-self.safe_margin) * self.profolio.profolio_value:
             output[0,0] = 1  # 足夠現金
         elif self.cash < (1-self.safe_margin) * self.profolio.profolio_value:
             output[0,0] = 0  # 不夠現金
-
+        '''
+        # 整體獲利狀態
+        return_pct = self.total_profit / self.init_cash
+        if return_pct > 0:
+            output[0,5] = 1  # 整體獲利
+            output[0,6] = 0  # 整體獲利正常
+            if return_pct > self.stop_pct and return_pct <= self.stop_pct * 2:
+                output[0,6] = 1  # 整體大幅獲利
+            elif return_pct > self.stop_pct * 2 and return_pct <= self.stop_pct * 3:
+                output[0,6] = 2  # 整體大幅獲利2
+            elif return_pct > self.stop_pct * 3 and return_pct <= self.stop_pct * 4:
+                output[0,6] = 3  # 整體大幅獲利3
+            elif return_pct > self.stop_pct * 4:
+                output[0,6] = 4  # 整體大幅獲利4
+        elif return_pct < 0:
+            output[0,5] = 2  # 整體虧損
+            output[0,6] = 0  # 整體虧損正常
+            if return_pct < -self.stop_pct and return_pct >= -self.stop_pct * 2:
+                output[0,6] = 1  # 整體大幅虧損
+            elif return_pct < -self.stop_pct * 2 and return_pct >= -self.stop_pct * 3:
+                output[0,6] = 2  # 整體大幅虧損2
+            elif return_pct < -self.stop_pct * 3 and return_pct >= -self.stop_pct * 4:
+                output[0,6] = 3  # 整體大幅虧損3
+            elif return_pct < -self.stop_pct * 4:
+                output[0,6] = 4  # 整體大幅虧損4
+        elif return_pct == 0:
+            output[0,5] = 0  # 整體持平
+            output[0,6] = 0  # 整體正常
+        '''
         if len(self.inventory) > 0 :  # 持倉
+            holding_value = get_inventory_value(self.inventory, close, self.commission)
+            holding_pct = holding_value / self.profolio.profolio_value
+            # 持倉水位
+            if holding_pct <= 0.1:
+                output[0,2] = 1
+            elif holding_pct > 0.1 and holding_pct <= 0.3:
+                output[0,2] = 2
+            elif holding_pct > 0.3 and holding_pct <= 0.5:
+                output[0,2] = 3
+            elif holding_pct > 0.5:
+                output[0,2] = 4
             if self.inventory[0][-1]=='long':
                 output[0,1] = 1  # 多單
                 account_profit, price_value, close_value = get_long_account(self.inventory,close,self.commission)
                 if account_profit > 0:
-                    output[0,2] = 1  # 獲利
-                    output[0,3] = 0  # 正常
-                    if account_profit / price_value > self.stop_pct:
-                        output[0,3] = 1  # 大幅獲利
-                    if account_profit / price_value > self.stop_pct * 2:
-                        output[0,3] = 2  # 大幅獲利2
+                    output[0,3] = 1  # 帳戶獲利
+                    output[0,4] = 0  # 帳面正常
+                    account_p_pct = account_profit / price_value
+                    if account_p_pct > self.stop_pct and account_p_pct <= self.stop_pct * 2:
+                        output[0,4] = 1  # 帳戶大幅獲利
+                    elif account_p_pct > self.stop_pct * 2 and account_p_pct <= self.stop_pct * 3:
+                        output[0,4] = 2  # 帳戶大幅獲利2
+                    elif account_p_pct > self.stop_pct * 3 and account_p_pct <= self.stop_pct * 4:
+                        output[0,4] = 3  # 帳戶大幅獲利3
+                    elif account_p_pct > self.stop_pct * 4:
+                        output[0,4] = 4  # 帳戶大幅獲利4
                 elif account_profit < 0:
-                    output[0,2] = 2  # 虧損
-                    output[0,3] = 0  # 正常
-                    if account_profit / price_value < - self.stop_pct:
-                        output[0,3] = 1  # 大幅虧損
-                    if account_profit / price_value < - self.stop_pct * 2:
-                        output[0,3] = 2  # 大幅虧損2
+                    output[0,3] = 2  # 帳戶虧損
+                    output[0,4] = 0  # 帳面正常
+                    account_p_pct = account_profit / price_value
+                    if account_p_pct < -self.stop_pct and account_p_pct >= -self.stop_pct * 2:
+                        output[0,4] = 1  # 帳戶大幅虧損
+                    elif account_p_pct < -self.stop_pct * 2 and account_p_pct >= -self.stop_pct * 3:
+                        output[0,4] = 2  # 帳戶大幅虧損2
+                    elif account_p_pct < -self.stop_pct * 3 and account_p_pct >= -self.stop_pct * 4:
+                        output[0,4] = 3  # 帳戶大幅虧損3
+                    elif account_p_pct < -self.stop_pct * 4:
+                        output[0,4] = 4  # 帳戶大幅虧損4
                 elif account_profit == 0:
-                    output[0,2] = 0  # 持平
-                    output[0,3] = 0  # 正常
+                    output[0,3] = 0  # 帳戶持平
+                    output[0,4] = 0  # 帳面正常
             elif self.inventory[0][-1]=='short':
                 output[0,1] = 2  # 空單
                 account_profit, price_value, close_value = get_short_account(self.inventory,close,self.commission)
                 if account_profit > 0:
-                    output[0,2] = 1  # 獲利
-                    output[0,3] = 0  # 正常
-                    if account_profit / price_value > self.stop_pct:
-                        output[0,3] = 1  # 大幅獲利
-                    if account_profit / price_value > self.stop_pct * 2:
-                        output[0,3] = 2  # 大幅獲利2
+                    output[0,3] = 1  # 帳戶獲利
+                    output[0,4] = 0  # 帳面正常
+                    account_p_pct = account_profit / price_value
+                    if account_p_pct > self.stop_pct and account_p_pct <= self.stop_pct * 2:
+                        output[0,4] = 1  # 帳戶大幅獲利
+                    elif account_p_pct > self.stop_pct * 2 and account_p_pct <= self.stop_pct * 3:
+                        output[0,4] = 2  # 帳戶大幅獲利2
+                    elif account_p_pct > self.stop_pct * 3 and account_p_pct <= self.stop_pct * 4:
+                        output[0,4] = 3  # 帳戶大幅獲利3
+                    elif account_p_pct > self.stop_pct * 4:
+                        output[0,4] = 4  # 帳戶大幅獲利4
                 elif account_profit < 0:
-                    output[0,2] = 2  # 虧損
-                    output[0,3] = 0  # 正常
-                    if account_profit / price_value < - self.stop_pct:
-                        output[0,3] = 1  # 大幅虧損
-                    if account_profit / price_value < - self.stop_pct * 2:
-                        output[0,3] = 2  # 大幅虧損2
+                    output[0,3] = 2  # 帳戶虧損
+                    output[0,4] = 0  # 帳面正常
+                    account_p_pct = account_profit / price_value
+                    if account_p_pct < -self.stop_pct and account_p_pct >= -self.stop_pct * 2:
+                        output[0,4] = 1  # 帳戶大幅虧損
+                    elif account_p_pct < -self.stop_pct * 2 and account_p_pct >= -self.stop_pct * 3:
+                        output[0,4] = 2  # 帳戶大幅虧損2
+                    elif account_p_pct < -self.stop_pct * 3 and account_p_pct >= -self.stop_pct * 4:
+                        output[0,4] = 3  # 帳戶大幅虧損3
+                    elif account_p_pct < -self.stop_pct * 4:
+                        output[0,4] = 4  # 帳戶大幅虧損4
                 elif account_profit == 0:
-                    output[0,2] = 0  # 持平
-                    output[0,3] = 0  # 正常
+                    output[0,3] = 0  # 帳戶持平
+                    output[0,4] = 0  # 帳面正常
         else:
             output[0,1] = 0  # 空手
-            output[0,2] = 0  # 持平
-            output[0,3] = 0  # 正常
+            output[0,2] = 0  # 持倉水位0
+            output[0,3] = 0  # 帳戶持平
+            output[0,4] = 0  # 帳面正常
         
-        one_hot_out = to_categorical(output, num_classes=3)
+        one_hot_out = to_categorical(output, num_classes=5)
         return one_hot_out
         
         

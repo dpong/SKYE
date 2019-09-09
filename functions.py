@@ -31,8 +31,8 @@ def get_data(ticker, start, end):
 	#df.reset_index(level=0, inplace=True)
 	#df['Date']=df['Date'].apply(str)
 	# csv file
-	#df = pd.read_csv('data/{}_stock_price_train_short.csv'.format(ticker))
-	df = pd.read_csv('data/day_{}_200_data.csv'.format(ticker))
+	df = pd.read_csv('data/{}_stock_price_train_short.csv'.format(ticker))
+	#df = pd.read_csv('data/day_{}_200_data.csv'.format(ticker))
 	return df
 
 #初始化輸入資料
@@ -99,10 +99,11 @@ def visualization(data, time_data, trading_record):
 	import matplotlib.pyplot as plt
 	from datetime import datetime
 	df = pd.DataFrame(data)
-	df.rename(columns={0:"Close", 1:"Shift Open", 2:'High', 3:"Low", 4:"Volume", 5:'Return Ratio', 5:"Holding", 6:"Cash"}, inplace=True)
+	df.rename(columns={0:"Close", 1:"Shift Open", 2:'High', 3:"Low", 4:"Volume", 5:'Return Ratio', 6:"Holding", 7:"Cash"}, inplace=True)
 	df['Date'] = pd.DataFrame(time_data)
 	df['Action'] = pd.DataFrame(trading_record[0])
 	df['Trade Unit'] = pd.DataFrame(trading_record[1])
+	df.dropna(how='any',inplace=True)
 	start = time_data[0]
 	end = time_data[-1]
 	plt.style.use('ggplot')

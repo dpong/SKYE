@@ -41,7 +41,7 @@ class Agent:
 			self.target_model = self._model(' Target')
 		else:
 			self.model = self._model('  Model')
-		self.optimizer = tf.optimizers.Adam(learning_rate=0.0001, epsilon=0.000025)
+		self.optimizer = tf.optimizers.Adam(learning_rate=0.0000625, epsilon=0.000025)
 		self.loss_function = tf.keras.losses.Huber()
 
 
@@ -62,7 +62,7 @@ class Agent:
 
 	def act(self, state, self_state):
 		if not self.is_eval and np.random.rand() <= self.epsilon:
-			return random.randrange(self.action_size), random.randint(1, self.unit_up_limit)
+			return random.randrange(self.action_size), random.randint(self.unit_down_limit, self.unit_up_limit)
 		options, unit = self.model([state, self_state])
 		options = options.numpy()
 		unit = unit.numpy()
