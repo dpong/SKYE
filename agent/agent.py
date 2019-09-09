@@ -60,7 +60,7 @@ class Agent:
 	def update_target_model(self):
 		self.target_model.set_weights(self.model.get_weights())
 
-	def act(self, state, self_state):
+	def act(self, state, self_state):  #
 		if not self.is_eval and np.random.rand() <= self.epsilon:
 			return random.randrange(self.action_size), random.randint(self.unit_down_limit, self.unit_up_limit)
 		options, unit = self.model([state, self_state])
