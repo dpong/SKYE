@@ -96,7 +96,7 @@ class Agent:
 		for i in range(self.batch_size):
 			state_inputs[i] = mini_batch[i][0][0]
 			self_state[i] = mini_batch[i][0][1]
-			action.append(mini_batch[i][1][0])
+			action.append(mini_batch[i][1])
 			reward.append(mini_batch[i][2])
 			next_states[i][:][:] = mini_batch[i][3][0]
 			done.append(mini_batch[i][4])
