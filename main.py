@@ -71,9 +71,9 @@ for e in range(1, episode_count + 1):
 			trading.max_con_lose = trading.lose_count
 		done = True if t == l - 1 else False
 		# 計算的時候給大reward
-		if trading.total_profit / trading.init_cash <= 0.05 and done:
+		if (profolio.profolio_value - trading.init_cash) / trading.init_cash <= 0 and done:
 			trading.reward += -1
-		elif trading.total_profit / trading.init_cash > 0.05 and done:
+		elif (profolio.profolio_value - trading.init_cash) / trading.init_cash > 0 and done:
 			trading.reward += 1
 
 		if not is_evaluating: 

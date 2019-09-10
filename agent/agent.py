@@ -116,9 +116,9 @@ class Agent:
 			old_q.append(q_result[i][action[i]])
 			q_result[i][action[i]] = reward[i]
 			if not done[i]:
-				q_result[i][action[i]] = q_result[i][action[i]] + self.gamma * q_t_next_result[i][next_action[i]]
+				q_result[i][action[i]] +=  self.gamma * q_t_next_result[i][next_action[i]]
 			# 計算error給PER
-			error = abs(old_q[i] - q_result[i][action[i]]) 
+			error = abs(old_q[i] - q_result[i][action[i]])
 			error *= is_weights[i]
 			self.memory.update(idxs[i], error)
 
