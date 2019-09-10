@@ -27,7 +27,7 @@ class Agent:
 		self.gamma = 0.95
 		self.batch_size = 128
 		self.epoch_loss_avg = tf.keras.metrics.Mean()
-		self.epochs = 5
+		self.epochs = 1
 		self.bar = Progbar(self.epochs)
 		self.is_eval = is_eval
 		self.checkpoint_path = m_path
@@ -128,11 +128,8 @@ class Agent:
 			self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables),
 				get_or_create_global_step())
 			self.epoch_loss_avg(loss_value)
-			self.bar.update(i, values=[('loss', self.epoch_loss_avg.result().numpy())])
-		print('\n')
-		if self.epsilon > self.epsilon_min:
-			#貪婪度遞減   
-			self.epsilon *= self.epsilon_decay 
+			
+		
 
 
 

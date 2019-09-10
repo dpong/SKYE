@@ -25,6 +25,8 @@ trading.print_log = is_evaluating
 profolio = Profolio(init_cash)
 #資料整合轉換
 data, time_data = init_data(df, init_cash)
+#決定unit是多少
+init_unit = int((init_cash / data[0,0]) / 20)
 # n-step return
 step_n = 1
 #給agent初始化輸入的緯度
@@ -61,6 +63,7 @@ for e in range(1, episode_count + 1):
 		# 輸出action的位置
 		action = agent.act(state, self_state)
 		trading.reward = 0
+		trading.unit = init_unit
 		# 這邊交易的價格用當日的收盤價代替，實際交易就是成交價格
 		traded_action, traded_unit = trading.policy(action, data[t, n_close], time_data[t])
 		# 紀錄最大連續虧損
@@ -86,15 +89,16 @@ for e in range(1, episode_count + 1):
 		
 		if not is_evaluating:
 			# 動作一定次數才會訓練
-			if train_count > agent.batch_size and train_count > memory_heatup:
+			if train_count > 10 and train_count > memory_heatup:
 				agent.train_model()
+				print('Loss: %.6f' % agent.epoch_loss_avg.result().numpy())
 				agent.model.save_weights(agent.checkpoint_path, save_format='tf')
 				train_count = 0
 				memory_heatup = 0  # 一開始heatup後就歸0，不再作用
 				target_update +=1
 				
 			# 多次training後更新target model
-			if target_update == 2 :
+			if target_update == 5 :
 				agent.update_target_model()
 				target_update = 0
 
@@ -110,6 +114,8 @@ for e in range(1, episode_count + 1):
 			data[t+1,n_holding] = 0 
 
 		if done:
+			if agent.epsilon > agent.epsilon_min:  #貪婪度遞減   
+				agent.epsilon *= agent.epsilon_decay 
 			if not trading.win_count+trading.lose_count == 0:
 				traded_times = trading.win_count + trading.lose_count
 				win_r = 100 * trading.win_count / traded_times

@@ -23,12 +23,7 @@ class Trading():
         self.max_con_lose = 0
         self.print_log = False
 
-    def _unit_adjust(self, value, close):   
-        up_limit_unit = int((value / 10) / close)   # 出手就是10%的總資產
-        return up_limit_unit
-
     def policy(self, action, close, current_time):
-        self.unit = self._unit_adjust(self.cash, close)
         
         if action == 1 and len(self.inventory) > 0 and self.inventory[0][-1]=='short':
             self._long_clean(close, current_time)

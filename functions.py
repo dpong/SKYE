@@ -31,8 +31,8 @@ def get_data(ticker, start, end):
 	#df.reset_index(level=0, inplace=True)
 	#df['Date']=df['Date'].apply(str)
 	# csv file
-	df = pd.read_csv('data/{}_stock_price_train_short.csv'.format(ticker))
-	#df = pd.read_csv('data/day_{}_200_data.csv'.format(ticker))
+	#df = pd.read_csv('data/{}_stock_price_train_short.csv'.format(ticker))
+	df = pd.read_csv('data/day_{}_200_data.csv'.format(ticker))
 	return df
 
 #初始化輸入資料
