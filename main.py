@@ -10,19 +10,19 @@ if len(sys.argv) != 5:
 	exit()
 
 ticker, window_size, episode_count, is_evaluating = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), strtobool(sys.argv[4])
-init_cash = 10000000
+init_cash = 1000000
 #要給checkpoint個路徑
 #c_path = "models/{}/training.ckpt".format(ticker)
 m_path = "models/{}/model_weights".format(ticker)
 #取得歷史資料
-start = '2018-1-1'
-end = '2019-1-1'
-df = get_data(ticker, start, end)
+frequency = 'day'  # day, minute, hour
+data_quantity = 400
+df = get_data(ticker, data_quantity, frequency)
 #起始各個class
 trading = Trading(init_cash)
 trading.print_log = is_evaluating
 #資料整合轉換
-data, time_data = init_data(df, init_cash)
+data, time_data = init_data(df)
 # n-step return
 step_n = 1
 #給agent初始化輸入的緯度
@@ -35,11 +35,11 @@ if not is_evaluating:
 	train_count = 0
 	memory_heatup = agent.batch_size * 5  # 預先跑個幾輪亂數，再來依照權重學習
 else:
-	trading_record = np.zeros((2,len(data)))  #視覺化用途
+	trading_record = np.zeros((1,len(data)))  # 記錄用途
 
 # 開始
 for e in range(1, episode_count + 1):
-	trading.total_profit, trading.cash, trading.total_reward = 0, init_cash, 0
+	trading.total_profit, trading.total_reward = 0, 0
 	trading.win_count, trading.lose_count = 0, 0
 	trading.max_con_lose = 0
 	for t in range(window_size, l):         #前面的資料要來預熱一下
@@ -61,7 +61,6 @@ for e in range(1, episode_count + 1):
 			train_count += 1
 		else:
 			trading_record[0][t] = action
-			trading_record[1][t] = trading.unit
 		
 		# 更新總 reward
 		trading.total_reward += trading.reward

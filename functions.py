@@ -26,14 +26,12 @@ def get_shape(data,window_size):
 	return input_shape.shape[1:], math.ceil(neurons)
 
 #取得歷史資料
-def get_data(ticker, start, end):
-	frequency = 'day'  # day, minute, hour
-	data_quantity = 400
+def get_data(ticker, data_quantity, frequency):
 	df = get_crypto_from_api(ticker, data_quantity, frequency)
 	return df
 
 #初始化輸入資料
-def init_data(df, init_cash):
+def init_data(df):
 	df['shift_open'] = df['Open'].shift(-1)   # 交易的時候，只知道今天的開盤價
 	df.dropna(how='any',inplace=True)
 	df_time = df['Date']
