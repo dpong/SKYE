@@ -20,8 +20,8 @@ class Agent:
 		self.neurons = neurons
 		self.memory_size = 20000 #記憶長度
 		self.memory = Memory(self.memory_size)
-		self.epsilon = 1
-		self.epsilon_min = 0.1
+		self.epsilon = 0.3
+		self.epsilon_min = 0.05
 		self.epsilon_decay = 0.995
 		self.gamma = 0.95
 		self.batch_size = 128
