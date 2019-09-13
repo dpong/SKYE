@@ -17,6 +17,10 @@ class Build_model():
         self_state_input = Input(shape=(self_feat_shape[-2], self_feat_shape[-1]), name='self_state_input', dtype='float64')
         s1 = Embedding(self_feat_shape[-1], self_feat_shape[-1], input_length=self_feat_shape[-2])(self_state_input)
         flat_s1 = Flatten()(s1)
+        s2 = Dense(neurons)(flat_s1)
+        s2_norm = BatchNormalization()(s2)
+        s2_norm_act = Activation('elu')(s2_norm)
+        drop_s = Dropout(0.5)(s2_norm_act)
         # 卷積層們，kernel_size為5天，一週的概念
         con1 = Conv1D(state_size[-1]*state_size[-1], 5, padding='causal')(drop0)
         con1_norm = BatchNormalization()(con1)
@@ -35,13 +39,13 @@ class Build_model():
         flat = Flatten()(pool_max_2)
         drop1 = Dropout(0.3)(flat)
         # 外插 self_state_input
-        connect = concatenate([drop1, flat_s1])
+        connect = concatenate([drop1, drop_s])
         # 連結層
-        n1 = Dense(neurons, kernel_regularizer=l2(0.01))(connect)
+        n1 = Dense(neurons)(connect)
         n1_norm = BatchNormalization()(n1)
         n1_norm_act = Activation('elu')(n1_norm)
         drop2 = Dropout(0.5)(n1_norm_act)
-        n2 = Dense(neurons, kernel_regularizer=l2(0.01))(drop2)
+        n2 = Dense(neurons)(drop2)
         n2_norm = BatchNormalization()(n2)
         n2_norm_act = Activation('elu')(n2_norm)
         drop3 = Dropout(0.5)(n2_norm_act)
