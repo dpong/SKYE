@@ -37,7 +37,7 @@ def get_data(ticker, start, end):
 
 #初始化輸入資料
 def init_data(df, init_cash):
-	df['shift_open'] = df['Open'].shift(-1)   # 交易的時候，只知道今天的開盤價
+	df['shift_open'] = df['Open'].shift(-1)    # 交易的時候，只知道今天的開盤價
 	df.dropna(how='any',inplace=True)
 	df['Cash'] = init_cash
 	df['Holding'] = 0
