@@ -13,14 +13,14 @@ def formatPrice(n):
 
 # returns an n-day state representation ending at time t
 def getState(data, t, n):
-	handle = data[t-n:t,:-3]  # 後面三個資料不看
+	handle = data[t-n:t]
 	out = scaler.fit_transform(handle)  
 	out = np.array([out])  # 修正input形狀
 	out.dtype = 'float64'
 	return out
 
 #model的輸入值起始
-def get_shape(data,window_size):
+def get_shape(data, window_size):
 	input_shape = getState(data, window_size, window_size)
 	neurons = input_shape.shape[1] * input_shape.shape[2] * 2 / 3
 	return input_shape.shape[1:], math.ceil(neurons)

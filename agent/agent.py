@@ -33,9 +33,11 @@ class Agent:
 		self.checkpoint_dir = os.path.dirname(self.checkpoint_path)
 		self.check_index = self.checkpoint_path + '.index'   #checkpoint裡面的檔案多加了一個.index
 		if is_eval==False:
+			self.training = True
 			self.model = self._model('  Model')
 			self.target_model = self._model(' Target')
 		else:
+			self.training = False
 			self.model = self._model('  Model')
 		self.optimizer = tf.optimizers.Adam(learning_rate=0.0000625, epsilon=0.000025)
 		self.loss_function = tf.keras.losses.Huber()
@@ -43,7 +45,7 @@ class Agent:
 
 	def _model(self, model_name):
 		ddqn = Build_model()
-		model = ddqn.build_model(self.state_size, self.neurons, self.action_size)
+		model = ddqn.build_model(self.state_size, self.neurons, self.action_size, self.training)
 		if os.path.exists(self.check_index):
 			#如果已經有訓練過，就接著load權重
 			print('-'*52+'{} Weights loaded!!'.format(model_name)+'-'*52)
