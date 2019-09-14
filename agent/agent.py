@@ -17,9 +17,9 @@ tf.compat.v1.Session(config=config)
 class Agent:
 	def __init__(self, ticker, state_size, neurons, m_path, is_eval=False):
 		self.state_size = state_size 
-		self.action_size = 7
+		self.action_size = 3
 		self.neurons = neurons
-		self.memory_size = 20000 #記憶長度
+		self.memory_size = 10000 #記憶長度
 		self.memory = Memory(self.memory_size)
 		self.epsilon = 0.3
 		self.epsilon_min = 0.05

@@ -23,7 +23,7 @@ trading = Trading(init_cash)
 trading.print_log = is_evaluating
 #資料整合轉換
 data, time_data = init_data(df)
-# n-step return
+# next state
 step_n = 1
 #給agent初始化輸入的緯度
 input_shape, neurons = get_shape(data[:window_size], window_size)
