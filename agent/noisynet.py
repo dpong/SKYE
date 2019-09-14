@@ -27,14 +27,14 @@ class NoisyDense(tf.keras.layers.Layer):
 
         # mu + sigma * epsilon for weight
         self.mu_w = tf.Variable(initial_value=mu_init(shape=(self.input_dim, self.units),
-        dtype='float64'),trainable=True)
+        dtype='float64'), trainable=True)
         self.sigma_w = tf.Variable(initial_value=sigma_init(shape=(self.input_dim, self.units),
-        dtype='float64'),trainable=True)
+        dtype='float64'), trainable=True)
         # mu + sigma * epsilon for bias
         self.mu_bias = tf.Variable(initial_value=mu_bias_init(shape=(self.units,),
-        dtype='float64'),trainable=True)
+        dtype='float64'), trainable=True)
         self.sigma_bias = tf.Variable(initial_value=sigma_bias_init(shape=(self.units,),
-        dtype='float64'),trainable=True)
+        dtype='float64'), trainable=True)
 
         super(NoisyDense, self).build(input_shape)
         
@@ -42,8 +42,8 @@ class NoisyDense(tf.keras.layers.Layer):
         # Factor 式的 noisy
         #是訓練階段給高斯雜訊，不是就把epsilon設0
         if self.noisy:
-            p = tf.random.normal([int(inputs.shape[-1]), self.units], dtype=tf.dtypes.float64)
-            q = tf.random.normal([1, self.units], dtype=tf.dtypes.float64)
+            p = tf.random.normal([inputs.shape[-1], self.units], dtype='float64')
+            q = tf.random.normal([1, self.units], dtype='float64')
             f_p = tf.multiply(tf.sign(p), tf.pow(tf.abs(p), 0.5))
             f_q = tf.multiply(tf.sign(q), tf.pow(tf.abs(q), 0.5))
             epsilon_w = f_p*f_q
