@@ -28,7 +28,7 @@ def get_shape(data, window_size):
 #取得歷史資料
 def get_data(ticker, data_quantity, frequency, is_eval):
 	train_split_ratio = 0.8
-	train_set = int(data_quantity * 0.8)
+	train_set = int(data_quantity * train_split_ratio)
 	eval_set = data_quantity - train_set
 	df = get_crypto_from_api(ticker, data_quantity, frequency)
 	if is_eval:
