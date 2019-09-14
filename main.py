@@ -17,7 +17,7 @@ m_path = "models/{}/model_weights".format(ticker)
 #取得歷史資料
 frequency = 'day'  # day, minute, hour
 data_quantity = 400
-df = get_data(ticker, data_quantity, frequency)
+df = get_data(ticker, data_quantity, frequency, is_evaluating)
 #起始各個class
 trading = Trading(init_cash)
 trading.print_log = is_evaluating
