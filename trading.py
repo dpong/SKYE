@@ -1,40 +1,28 @@
 from functions import *
 from tensorflow.keras.utils import to_categorical
 import numpy as np
+from tensorflow.keras.utils import to_categorical
 
 class Trading():
     def __init__(self, init_cash):
         self.init_cash = init_cash
-        self.highest_value = np.array([0,0])  #0是多倉位，1是空倉位
         self.reward = 0
-        self.commission = 7.5  # 手續費約莫7.5點
-        self.slip_cost = 20   # 滑價成本約莫20點
+        self.commission = 7.5  # 手續費
+        self.slip_cost = 10   # 滑價成本
         self.stop_pct = 0.1  # 停損%數
         self.total_profit = 0
         self.total_reward = 0
         self.win_count = 0
         self.lose_count = 0
         self.max_con_lose = 0
-
         self.n_close = 0
-        
         self.print_log = False
 
     def policy(self, action, data, time_data):
         if action == 1:
-            self._buy_hold(1, data, time_data)
+            self._buy_hold(data, time_data)
         elif action == 2:
-            self._sell_hold(1, data, time_data)
-        
-        elif action == 3:
-            self._buy_hold(5, data, time_data)
-        elif action == 4:
-            self._sell_hold(5, data, time_data)
-
-        elif action == 5:
-            self._buy_hold(20, data, time_data)
-        elif action == 6:
-            self._sell_hold(20, data, time_data)
+            self._sell_hold(data, time_data)
 
         elif action == 0:
             if self.print_log == True:
@@ -43,13 +31,20 @@ class Trading():
                 + " | Reward: " + str(round(self.reward,2)))
 
     # Strategy part
-    def _buy_hold(self, days, data, time_data):
+    def _buy_hold(self, data, time_data):  # 做多加上移動停損
         bought_price = self._long_new(data[0, self.n_close])
-        if len(data) >= days: 
-            period = data[0:days]
-            profit = self._short_clean(period[-1, self.n_close], bought_price)
-        else:
-            profit = self._short_clean(data[-1, self.n_close], bought_price)
+        hightest_price = data[0, self.n_close]
+        for t in range(1, len(data)):
+            if t == len(data)-1:
+                profit = self._short_clean(data[t, self.n_close], bought_price)
+                break
+            else:
+                if data[t, self.n_close] > hightest_price:
+                    hightest_price = data[t, self.n_close] 
+                elif data[t, self.n_close] <= hightest_price:
+                    if data[t, self.n_close] <= hightest_price * (1 - self.stop_pct):
+                        profit = self._short_clean(data[t, self.n_close], bought_price)
+                        break
         if profit > 0 :
             self.win_count += 1
         elif profit < 0 :
@@ -57,17 +52,24 @@ class Trading():
         self.total_profit += profit
         self.reward = profit / bought_price
         if self.print_log == True:
-            print(time_data[0] + " Strategy: Buy hold {} days ".format(days)
+            print(time_data[0] + " Strategy: %.f%% Trailing Stop Long " % (self.stop_pct*100)
             + " | Profit: " + formatPrice(profit)+ " | Total Profit: " + formatPrice(self.total_profit)
             + " | Reward: " + str(round(self.reward,2)))
 
-    def _sell_hold(self, days, data, time_data):
+    def _sell_hold(self, data, time_data):  # 做空加上移動停損
         sold_price = self._short_new(data[0, self.n_close])
-        if len(data) >= days:
-            period = data[0:days]
-            profit = self._long_clean(period[-1, self.n_close], sold_price)
-        else:
-            profit = self._long_clean(data[-1, self.n_close], sold_price)
+        lowest_price = data[0, self.n_close]
+        for t in range(1, len(data)):
+            if t == len(data)-1:
+                profit = self._long_clean(data[t, self.n_close], sold_price)
+                break
+            else:
+                if data[t, self.n_close] < lowest_price:
+                    lowest_price = data[t, self.n_close] 
+                elif data[t, self.n_close] >= lowest_price:
+                    if data[t, self.n_close] >= lowest_price * (1 + self.stop_pct):
+                        profit = self._long_clean(data[t, self.n_close], sold_price)
+                        break
         if profit > 0 :
             self.win_count += 1
         elif profit < 0 :
@@ -75,7 +77,7 @@ class Trading():
         self.total_profit += profit
         self.reward = profit / sold_price
         if self.print_log == True:
-            print(time_data[0] + " Strategy: Sell hold {} days".format(days)
+            print(time_data[0] + " Strategy: %.f%% Trailing Stop Short" % (self.stop_pct*100)
             + " | Profit: " + formatPrice(profit)+ " | Total Profit: " + formatPrice(self.total_profit)
             + " | Reward: " + str(round(self.reward,2)))
 

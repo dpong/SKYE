@@ -1,6 +1,6 @@
 import numpy as np
 import random, math
-import pandas_datareader as pdr
+#import pandas_datareader as pdr
 import pandas as pd
 from sklearn import preprocessing
 from data import *
@@ -26,9 +26,15 @@ def get_shape(data, window_size):
 	return input_shape.shape[1:], math.ceil(neurons)
 
 #取得歷史資料
-def get_data(ticker, data_quantity, frequency):
+def get_data(ticker, data_quantity, frequency, is_eval):
+	train_split_ratio = 0.8
+	train_set = int(data_quantity * train_split_ratio)
+	eval_set = data_quantity - train_set
 	df = get_crypto_from_api(ticker, data_quantity, frequency)
-	return df
+	if is_eval:
+		return df[-eval_set:]
+	else:
+		return df[:train_set]
 
 #初始化輸入資料
 def init_data(df):

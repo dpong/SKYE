@@ -16,7 +16,7 @@ tf.compat.v1.Session(config=config)
 class Agent:
 	def __init__(self, ticker, state_size, neurons, m_path, is_eval=False):
 		self.state_size = state_size # normalized previous days
-		self.action_size = 7
+		self.action_size = 3
 		self.neurons = neurons
 		self.memory_size = 20000 #記憶長度
 		self.memory = Memory(self.memory_size)
@@ -39,7 +39,7 @@ class Agent:
 		else:
 			self.training = False
 			self.model = self._model('  Model')
-		self.optimizer = tf.optimizers.Adam(learning_rate=0.0000625, epsilon=0.000025)
+		self.optimizer = tf.optimizers.Adam(learning_rate=0.0000625, epsilon=0.00015)
 		self.loss_function = tf.keras.losses.Huber()
 
 
