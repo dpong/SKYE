@@ -140,15 +140,15 @@ class Agent:
 					m_prob[action[i]][i][int(m_l)] += p_t_next[optimal_action_idxs[i]][i][j] * (m_u - bj)
 					m_prob[action[i]][i][int(m_u)] += p_t_next[optimal_action_idxs[i]][i][j] * (bj - m_l)
 			
-			new_p[action[i]][i][:] = m_prob[action[i]][i][:]	
+			#new_p[action[i]][i][:] = m_prob[action[i]][i][:]	
 		for i in range(self.batch_size):
-			error = abs(tf.reduce_sum(new_p[action[i]][i] * np.log(p[action[i]][i]+1e-9)))
+			error = abs(tf.reduce_sum(m_prob[action[i]][i] * np.log(p[action[i]][i]+1e-9)))
 			error *= is_weights[i]
 			self.memory.update(idxs[i], error)
 
 		# train model
 		for i in range(self.epochs):
-			loss_value, grads = self._grad(self.model, state_inputs, new_p)
+			loss_value, grads = self._grad(self.model, state_inputs, m_prob)
 			self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables),
 				get_or_create_global_step())
 			self.epoch_loss_avg(loss_value)

@@ -7,7 +7,7 @@ class Trading():
     def __init__(self, init_cash):
         self.init_cash = init_cash
         self.reward = 0
-        self.commission = 7.5  # 手續費
+        self.commission = 0.00075  # 手續費
         self.slip_cost = 10   # 滑價成本
         self.stop_pct = 0.1  # 停損%數
         self.total_profit = 0
@@ -83,21 +83,21 @@ class Trading():
 
     # Basic trading part
     def _long_clean(self, close, sold_price):
-        price = close + self.commission + self.slip_cost
+        price = close * (1+self.commission) + self.slip_cost
         profit = sold_price - price
         return profit
             
     def _long_new(self, close):
-        price = close + self.commission + self.slip_cost
+        price = close *(1+ self.commission) + self.slip_cost
         return price
 
     def _short_clean(self, close, bought_price):
-        price = close - self.commission - self.slip_cost
+        price = close *(1- self.commission) - self.slip_cost
         profit = (price - bought_price)
         return profit
     
     def _short_new(self, close):
-        price = close - self.commission - self.slip_cost
+        price = close *(1- self.commission) - self.slip_cost
         return price
 
     
