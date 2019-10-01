@@ -20,7 +20,9 @@ class Build_model():
         con2 = Conv1D(state_size[-1]*state_size[-1], 5, padding='causal')(con1_norm_act)
         con2_norm = BatchNormalization()(con2)
         con2_norm_act = Activation('elu')(con2_norm)
-        pool_max = MaxPooling1D(pool_size=5, strides=1, padding='same')(con2_norm_act)
+        drop1 = Dropout(0.5)(con2_norm_act)
+        pool_max = MaxPooling1D(pool_size=5, strides=1, padding='same')(drop1)
+        '''
         con3 = Conv1D(state_size[-1]*state_size[-1], 5, padding='causal')(pool_max)
         con3_norm = BatchNormalization()(con3)
         con3_norm_act = Activation('elu')(con3_norm)
@@ -28,10 +30,11 @@ class Build_model():
         con4_norm = BatchNormalization()(con4)
         con4_norm_act = Activation('elu')(con4_norm)
         pool_max_2 = MaxPooling1D(pool_size=5, strides=1, padding='same')(con4_norm_act)
-        flat = Flatten()(pool_max_2)
-        drop1 = Dropout(0.3)(flat)
+        '''
+        flat = Flatten()(pool_max)
+        #drop1 = Dropout(0.3)(flat)
         # 連結層
-        n1 = NoisyDense(neurons, Noisy=training)(drop1)
+        n1 = NoisyDense(neurons, Noisy=training)(flat)
         n1_norm = BatchNormalization()(n1)
         n1_norm_act = Activation('elu')(n1_norm)
         drop2 = Dropout(0.5)(n1_norm_act)
